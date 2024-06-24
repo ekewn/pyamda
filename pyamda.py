@@ -319,7 +319,9 @@ def partition[a](p: Predicate[a], i: Iterable[a]) -> Tuple[Iterator[a], Iterator
 
 # List Functions
 
-def adjust[a](idx: int, fn:FnU[a, a], l: List[a]) -> List[a]:
+type NewList[a] = List[a]
+
+def adjust[a](idx: int, fn:FnU[a, a], l: List[a]) -> NewList[a]:
     """
     Returns a copy of the given list with the element at the index transformed by the given function. The original list remains unchanged.
     """
@@ -328,7 +330,7 @@ def adjust[a](idx: int, fn:FnU[a, a], l: List[a]) -> List[a]:
     return l2
 
 
-def move[a](idx_from: int, idx_to: int, l: List[a]) -> List[a]:
+def move[a](idx_from: int, idx_to: int, l: List[a]) -> NewList[a]:
     """
     Moves the item at the specified index to the new index.
     """
@@ -337,7 +339,7 @@ def move[a](idx_from: int, idx_to: int, l: List[a]) -> List[a]:
     return l2
 
 
-def swap[a](idx1: int, idx2: int, l: List[a]) -> List[a]:
+def swap[a](idx1: int, idx2: int, l: List[a]) -> NewList[a]:
     """
     Swaps the items at the specified indices.
     """
@@ -347,7 +349,7 @@ def swap[a](idx1: int, idx2: int, l: List[a]) -> List[a]:
     return l2
 
 
-def update[a](idx: int, val: a, l: List[a]) -> List[a]:
+def update[a](idx: int, val: a, l: List[a]) -> NewList[a]:
     """
     Updates the item at the specified index.
     """
@@ -356,7 +358,7 @@ def update[a](idx: int, val: a, l: List[a]) -> List[a]:
     return l2
 
 
-def cons[a](val: a | List[a], l: List[a]) -> List[a]:
+def cons[a](val: a | List[a], l: List[a]) -> NewList[a]:
     """
     Prepends a val to list.
     """
@@ -378,7 +380,28 @@ def get[a, b](d: Dict[a, b], default: b, key: a) -> b:
     return d.get(key, default)
 
 
+# String Functions
+
+type NewStr = str
+
+def replace(old: str, new: str, s: str) -> NewStr:
+    """
+    Pure s.replace()
+    """
+    s2 = s
+    return s2.replace(old, new)
+
+
+def split(sep: str, s: str, maxsplits: int = -1) -> List[NewStr]:
+    """
+    Pure s.split().
+    """
+    s2 = s
+    return s2.split(sep, maxsplits)
+
+
 # Mathematical Functions
+
 def add_this[a](arg: a) -> FnU[a, a]:
     """
     Curried operator.add. Returns unary function that adds this arg.
@@ -519,6 +542,10 @@ if __name__ == "__main__":
     assert cons(0, [0, 1, 2, 3, 4]) == [0, 0, 1, 2, 3, 4]
     assert cons([0, 1], [0, 1, 2, 3, 4]) == [0, 1, 0, 1, 2, 3, 4]
 
+    # String Functions
+    assert split(" ", "split function test") == ["split", "function", "test"]
+    assert replace(" ", "|", "replace function test") == "replace|function|test"
+
     # Math Functions
     assert add_this(1)(7) == 1 + 7
     assert mul_by(3)(7)   == 3 * 7
@@ -526,14 +553,6 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
-
-
-
-
-
-
-
-
 
 
 
