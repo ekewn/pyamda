@@ -275,7 +275,7 @@ def consume(i: Iterator) -> None:
     deque(i, maxlen=0)
 
 
-def take[a](n: int, i: Iterator[a]) -> Iterator[a]:
+def take[a](n: int, i: Iterable[a]) -> Iterator[a]:
     """
     Returns an iterator of the first n items from the supplied iterator.
     """
@@ -392,8 +392,8 @@ def div_by[a](arg: a) -> FnU[a, a]:
 
 if __name__ == "__main__":
     # Curried Built-ins
-    # assert list(take(3, map(add_this(1), count()))) == list(take(3, map_(add_this(1))(count())))
-    # assert list(take(3, filter(gt(2), count())))    == list(take(3,filter_(gt(2))(count())))
+    assert list(take(3, map(add_this(1), count()))) == list(take(3, map_(add_this(1))(count())))
+    assert list(take(3, filter(gt(2), count())))    == list(take(3,filter_(gt(2))(count())))
 
     # Composers
     assert compose(len, add_this(10), sub_this(1))("number should be 28") == len("number should be 28") + 10 - 1
@@ -481,5 +481,6 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
+
 
 
