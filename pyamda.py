@@ -192,12 +192,11 @@ def when[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
     return partial(_, p, fn)
 
 
-type IfThens[a, b] = Tuple[Predicate[a], FnU[a, b]]
-def cond[a, b](if_thens: List[IfThens[a, b]]) -> FnU[a, Optional[b]]:
+def cond[a, b](if_thens: List[Tuple[Predicate[a], FnU[a, b]]]) -> FnU[a, Optional[b]]:
     """
     Returns a unary function that applies the first function whose predicate is satisfied.
     """
-    def _(its: List[IfThens[a, b]], arg: a):
+    def _(its: List[Tuple[Predicate[a], FnU[a, b]]], arg: a):
         for it in its:
             if it[0](arg):
                 return it[1](arg)
@@ -326,6 +325,47 @@ def adjust[a](idx: int, fn:FnU[a, a], l: List[a]) -> List[a]:
     """
     l2 = l.copy()
     l2[idx] = fn(l2[idx])
+    return l2
+
+
+def move[a](idx_from: int, idx_to: int, l: List[a]) -> List[a]:
+    """
+    Moves the item at the specified index to the new index.
+    """
+    l2 = l.copy()
+    l2.insert(idx_to, l2.pop(idx_from))
+    return l2
+
+
+def swap[a](idx1: int, idx2: int, l: List[a]) -> List[a]:
+    """
+    Swaps the items at the specified indices.
+    """
+    l2 = l.copy()
+    v1, v2 = l[idx1], l[idx2]
+    l2[idx1], l2[idx2] = v2, v1
+    return l2
+
+
+def update[a](idx: int, val: a, l: List[a]) -> List[a]:
+    """
+    Updates the item at the specified index.
+    """
+    l2 = l.copy()
+    l2[idx] = val
+    return l2
+
+
+def cons[a](val: a | List[a], l: List[a]) -> List[a]:
+    """
+    Prepends a val to list.
+    """
+    l2 =l.copy()
+    if isinstance(val, List):
+        assert isinstance(val, List)
+        l2 = val + l2
+    else:
+        l2.insert(0, val)
     return l2
 
 
@@ -473,6 +513,11 @@ if __name__ == "__main__":
 
     # List Functions
     assert adjust(2, add_this(3), [0, 1, 2, 3]) == [0, 1, 5, 3]
+    assert move(0, 2, [0, 1, 2, 3, 4]) == [1, 2, 0, 3, 4]
+    assert swap(0, 2, [0, 1, 2, 3, 4]) == [2, 1, 0, 3, 4]
+    assert update(0, 2, [0, 1, 2, 3, 4]) == [2, 1, 2, 3, 4]
+    assert cons(0, [0, 1, 2, 3, 4]) == [0, 0, 1, 2, 3, 4]
+    assert cons([0, 1], [0, 1, 2, 3, 4]) == [0, 1, 0, 1, 2, 3, 4]
 
     # Math Functions
     assert add_this(1)(7) == 1 + 7
@@ -481,4 +526,14 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
+
+
+
+
+
+
+
+
+
+
 
