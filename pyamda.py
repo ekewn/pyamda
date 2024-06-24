@@ -429,7 +429,7 @@ if __name__ == "__main__":
     assert le    (1)(0)
     assert le    (1)(1)
     assert not le(1)(2)
-    
+
     # Branches
     assert if_else     (T, const      ("a"), const("b"))("anything") == "a"
     assert if_else     (F, const      ("a"), const("b"))("anything") == "b"
@@ -467,10 +467,12 @@ if __name__ == "__main__":
     assert list(take(3, drop(2, count())))        == [2, 3, 4]
     assert head(count())                          == 0
     assert list(take(3, tail(count())))           == [1, 2, 3]
-    #partition
+    partitiontest1, partitiontest2                =  partition(gt(3), take(6, count()))
+    assert list(partitiontest1)                   == [4, 5]
+    assert list(partitiontest2)                   == [0, 1, 2, 3]
 
     # List Functions
-    #adjust
+    assert adjust(2, add_this(3), [0, 1, 2, 3]) == [0, 1, 5, 3]
 
     # Math Functions
     assert add_this(1)(7) == 1 + 7
@@ -479,4 +481,5 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
+
 
