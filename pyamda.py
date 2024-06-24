@@ -28,16 +28,16 @@ type Predicate[a]       = FnU[a, bool]
 #
 #
 
-# Curried Classics
+# Curried Built-ins
 
-def map_[a, b](fn: Callable[[a], b]) -> Callable[[Iterable[a]], Iterable[b]]:
+def map_[a, b](fn: FnU[a, b]) -> FnU[Iterable[a], Iterable[a]]:
     """
     Curried map.
     """
     return partial(map, fn)
 
 
-def filter_[a](p: Predicate[a]) -> Callable[[Iterable[a]], Iterable[a]]:
+def filter_[a](p: Predicate[a]) -> FnU[Iterable[a], Iterable[a]]:
     """
     Curried filter.
     """
@@ -376,12 +376,12 @@ def div_by[a](arg: a) -> FnU[a, a]:
 
 
 if __name__ == "__main__":
-    # Curried Classics
-    assert list(take(3, map(add_this(1), count())))        == list(take(3, map_(add_this(1))(count())))
-    assert list(take(3, filter(gt(2), count()))) == list(take(3,filter_(gt(2))(count())))
+    # Curried Built-ins
+    assert list(take(3, map(add_this(1), count()))) == list(take(3, map_(add_this(1))(count())))
+    assert list(take(3, filter(gt(2), count())))    == list(take(3,filter_(gt(2))(count())))
 
     # Composers
-    assert compose(len, add_this(10), sub_this(1))("number should be 28") == 28
+    assert compose(len, add_this(10), sub_this(1))("number should be 28") == len("number should be 28") + 10 - 1
     assert pipe(1, add_this(1), mul_by(3))                                == (1 + 1) * 3
 
     # Composition Helpers
@@ -391,23 +391,33 @@ if __name__ == "__main__":
     assert tap(add_this(1), 1) == 2
 
     # Logical
-    assert T()                      == True
-    assert F()                      == False
-    assert both(T, T)("anything")   == True
-    assert both(T, F)("anything")   == False
-    assert both(F, F)("anything")   == False
-    assert either(T, T)("anything") == True
-    assert either(T, F)("anything") == True
-    assert either(F, F)("anything") == False
-    #eq
-    #gt
-    #ge
-    #lt
-    #le
+    assert T()
+    assert not F()
+    assert both      (T, T)("anything")
+    assert not both  (T, F)("anything")
+    assert not both  (F, F)("anything")
+    assert either    (T, T)("anything")
+    assert either    (T, F)("anything")
+    assert not either(F, F)("anything")
+    assert not eq(1)(0)
+    assert eq    (1)(1)
+    assert not eq(1)(2)
+    assert not gt(1)(0)
+    assert not gt(1)(1)
+    assert gt    (1)(2)
+    assert not ge(1)(0)
+    assert ge    (1)(1)
+    assert ge    (1)(2)
+    assert lt    (1)(0)
+    assert not lt(1)(1)
+    assert not lt(1)(2)
+    assert le    (1)(0)
+    assert le    (1)(1)
+    assert not le(1)(2)
 
     # Branches
-    assert if_else(T, const("a"), const("b"))("") == "a"
-    assert if_else(F, const("a"), const("b"))("") == "b"
+    assert if_else(T, const("a"), const("b"))("anything") == "a"
+    assert if_else(F, const("a"), const("b"))("anything") == "b"
     #unless
     #when
     #cond
@@ -416,9 +426,16 @@ if __name__ == "__main__":
     #default_with
 
     # Container-related
-    #empty
-    #is_empty
-    #is_none
+    assert all([is_empty(empty(["list"]))
+               , is_empty(empty({"dict" : 1}))
+               , is_empty(empty(123))
+               , is_empty(empty("string"))])
+    assert not all([is_empty(["this should fail because I'm not empty"])
+               , is_empty({})
+               , is_empty(0)
+               , is_empty("")])
+    assert is_none(None)
+    assert not is_none("this should fail because I'm not None")
 
     # Iterator Specifics
     #consume
@@ -439,8 +456,4 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
-
-
-
-
 
