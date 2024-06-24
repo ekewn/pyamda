@@ -439,11 +439,10 @@ if __name__ == "__main__":
 
     # Iterator Specifics
     #consume
-    assert list(take(4, iterate(add_this(3), 2)))                         == [2, 5, 8, 11]
-    assert list(take(3, drop(2, count())))                                == [2, 3, 4]
-    #head
-    #drop
-    #tail
+    assert list(take(4, iterate(add_this(3), 2))) == [2, 5, 8, 11]
+    assert list(take(3, drop(2, count())))        == [2, 3, 4]
+    assert head(count())                          == 1
+    assert list(take(3, tail(count())))           == [1, 2, 3]
     #partition
 
     # List Functions
@@ -456,4 +455,5 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
+
 
