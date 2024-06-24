@@ -118,6 +118,46 @@ def either[a](p1: Predicate[a], p2: Predicate[a]) -> Predicate[a]:
     return partial(_, p1, p2)
 
 
+def eq(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.eq.
+    e.g. ( eq(1)(2) ) == ( 1 == 2 )
+    """
+    return partial(op.eq, x)
+
+
+def gt(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.gt.
+    e.g. ( gt(1)(2) ) == ( 1 > 2 )
+    """
+    return partial(op.gt, x)
+
+
+def ge(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.ge.
+    e.g. ( ge(1)(2) ) == ( 1 >= 2 )
+    """
+    return partial(op.ge, x)
+
+
+def lt(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.lt.
+    e.g. ( lt(1)(2) ) == ( 1 < 2 )
+    """
+    return partial(op.lt, x)
+
+
+def le(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.le.
+    e.g. ( le(1)(2) ) == ( 1 <= 2 )
+    """
+    return partial(op.le, x)
+
+
 # Branches
 
 def if_else[a, b, c](p: Predicate[a], if_true: FnU[a, b], if_false: FnU[a , c]) -> FnU[a, b | c]:
@@ -338,7 +378,7 @@ def div_by[a](arg: a) -> FnU[a, a]:
 if __name__ == "__main__":
     # Curried Classics
     assert list(take(3, map(add_this(1), count())))        == list(take(3, map_(add_this(1))(count())))
-    assert list(take(3, filter(lambda x: x > 2, count()))) == list(take(3,filter_(lambda x: x > 2)(count())))
+    assert list(take(3, filter(gt(2), count()))) == list(take(3,filter_(gt(2))(count())))
 
     # Composers
     assert compose(len, add_this(10), sub_this(1))("number should be 28") == 28
@@ -359,10 +399,15 @@ if __name__ == "__main__":
     assert either(T, T)("anything") == True
     assert either(T, F)("anything") == True
     assert either(F, F)("anything") == False
+    #eq
+    #gt
+    #ge
+    #lt
+    #le
 
     # Branches
-    assert if_else(lambda _: True, lambda _: "a", lambda _: "b")("")  == "a"
-    assert if_else(lambda _: False, lambda _: "a", lambda _: "b")("") == "b"
+    assert if_else(T, const("a"), const("b"))("") == "a"
+    assert if_else(F, const("a"), const("b"))("") == "b"
     #unless
     #when
     #cond
@@ -394,6 +439,8 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
+
+
 
 
 
