@@ -277,7 +277,7 @@ def consume(i: Iterator) -> None:
 
 def take[a](n: int, i: Iterable[a]) -> Iterator[a]:
     """
-    Returns an iterator of the first n items from the supplied iterator.
+    Returns an iterator of the first n items from the supplied iterable.
     """
     return islice(i, n)
 
@@ -481,6 +481,4 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
-
-
 
