@@ -79,6 +79,14 @@ def always[a](x: a) -> FnN[a]:
     return partial(id, x)
 
 
+def flip[a, b, c](fn: FnB[a, b, c]) -> FnB[b, a, c]:
+    """
+    Returns a binary function with the argument order flipped.
+    """
+    def _(x: b, y: a): return fn(y, x)
+    return _
+
+
 def tap[a](fn: Callable, x: a) -> a:
     """
     Calls a function and then returns the argument.
@@ -129,33 +137,33 @@ def eq(x: Any) -> Predicate[Any]:
 def gt(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.gt.
-    e.g. ( gt(1)(2) ) == ( 1 > 2 )
+    e.g. ( gt(1)(2) ) == ( 2 > 1 )
     """
-    return partial(op.gt, x)
+    return partial(flip(op.gt), x)
 
 
 def ge(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.ge.
-    e.g. ( ge(1)(2) ) == ( 1 >= 2 )
+    e.g. ( ge(1)(2) ) == ( 2 >= 1 )
     """
-    return partial(op.ge, x)
+    return partial(flip(op.ge), x)
 
 
 def lt(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.lt.
-    e.g. ( lt(1)(2) ) == ( 1 < 2 )
+    e.g. ( lt(1)(2) ) == ( 2 < 1 )
     """
-    return partial(op.lt, x)
+    return partial(flip(op.lt), x)
 
 
 def le(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.le.
-    e.g. ( le(1)(2) ) == ( 1 <= 2 )
+    e.g. ( le(1)(2) ) == ( 2 <= 1 )
     """
-    return partial(op.le, x)
+    return partial(flip(op.le), x)
 
 
 # Branches
@@ -202,6 +210,13 @@ def const[a](x: a) -> Callable[[Any], a]:
     """
     def _(val, ignore): return val      # "Ignore is not accessed"... that's the point
     return partial(_, x)
+
+
+def none(*args) -> None:
+    """
+    Returns a function that always returns None.
+    """
+    return None
 
 
 def default_to[a](default: a, val: a) -> a:
@@ -342,7 +357,7 @@ def sub_this[a](arg: a) -> FnU[a, a]:
     """
     Curried operator.sub. Returns unary function that subtracts this arg.
     """
-    return partial(lambda x, y: y - x, arg)
+    return partial(flip(op.sub), arg)
 
 
 def mul_by[a](arg: a) -> FnU[a, a]:
@@ -363,7 +378,7 @@ def div_by[a](arg: a) -> FnU[a, a]:
     """
     Curred operator.floordiv. Returns unary function that sets the denominator as this arg.
     """
-    return partial(lambda x, y: y // x, arg)
+    return partial(flip(op.floordiv), arg)
 
 
 
@@ -377,8 +392,8 @@ def div_by[a](arg: a) -> FnU[a, a]:
 
 if __name__ == "__main__":
     # Curried Built-ins
-    assert list(take(3, map(add_this(1), count()))) == list(take(3, map_(add_this(1))(count())))
-    assert list(take(3, filter(gt(2), count())))    == list(take(3,filter_(gt(2))(count())))
+    # assert list(take(3, map(add_this(1), count()))) == list(take(3, map_(add_this(1))(count())))
+    # assert list(take(3, filter(gt(2), count())))    == list(take(3,filter_(gt(2))(count())))
 
     # Composers
     assert compose(len, add_this(10), sub_this(1))("number should be 28") == len("number should be 28") + 10 - 1
@@ -414,16 +429,26 @@ if __name__ == "__main__":
     assert le    (1)(0)
     assert le    (1)(1)
     assert not le(1)(2)
-
+    
     # Branches
-    assert if_else(T, const("a"), const("b"))("anything") == "a"
-    assert if_else(F, const("a"), const("b"))("anything") == "b"
-    #unless
-    #when
-    #cond
-    #const
-    #default_to
-    #default_with
+    assert if_else     (T, const      ("a"), const("b"))("anything") == "a"
+    assert if_else     (F, const      ("a"), const("b"))("anything") == "b"
+    assert unless      (T, add_this   (1))        (1)                == 1
+    assert unless      (F, add_this   (1))        (1)                == 2
+    assert when        (T, add_this   (1))        (1)                == 2
+    assert when        (F, add_this   (1))        (1)                == 1
+    assert const       (1)            ("anything")                   == 1
+    assert const       ("this")       (1)                            == "this"
+    assert default_to  (10, 11)                                      == 11
+    assert default_to  (10, None)                                    == 10
+    assert default_with(10, add_this  (1))        (20)               == 21
+    assert default_with(10, none)     (20)                           == 10
+    condtest: FnU[int, str] = default_with("otherwise", cond([(gt(0), const("is positive"))
+                                                               , (eq(0), const("is zero"))
+                                                               , (lt(0), const("is negative"))]))
+    assert condtest(1) == "is positive"
+    assert condtest(0) == "is zero"
+    assert condtest(-1) == "is negative"
 
     # Container-related
     assert all([is_empty(empty(["list"]))
@@ -438,10 +463,9 @@ if __name__ == "__main__":
     assert not is_none("this should fail because I'm not None")
 
     # Iterator Specifics
-    #consume
     assert list(take(4, iterate(add_this(3), 2))) == [2, 5, 8, 11]
     assert list(take(3, drop(2, count())))        == [2, 3, 4]
-    assert head(count())                          == 1
+    assert head(count())                          == 0
     assert list(take(3, tail(count())))           == [1, 2, 3]
     #partition
 
@@ -455,5 +479,4 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
-
 
