@@ -2,7 +2,7 @@ import operator as op
 from collections import deque
 from functools import partial, reduce
 from itertools import accumulate, count, filterfalse, islice, repeat, tee
-from typing import (Any, Callable, Dict, Iterable, Iterator, List, Optional,
+from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List, Optional,
                     Tuple)
 
 #
@@ -33,6 +33,7 @@ type Predicate[a]       = FnU[a, bool]
 def map_[a, b](fn: FnU[a, b]) -> FnU[Iterable[a], Iterable[a]]:
     """
     Curried map.
+    e.g map_(fn)(iter) == map(fn, iter)
     """
     return partial(map, fn)
 
@@ -40,6 +41,7 @@ def map_[a, b](fn: FnU[a, b]) -> FnU[Iterable[a], Iterable[a]]:
 def filter_[a](p: Predicate[a]) -> FnU[Iterable[a], Iterable[a]]:
     """
     Curried filter.
+    e.g. filter_(predicate)(iter) == filter(predicate, iter)
     """
     return partial(filter, p)
 
@@ -49,6 +51,7 @@ def filter_[a](p: Predicate[a]) -> FnU[Iterable[a], Iterable[a]]:
 def compose(*funcs: Callable) -> Callable:
     """
     Composes functions from left to right.
+    e.g compose(add_to(1), mul_by(2))(3) == (3 + 1) * 2 == 8
     """
     def compose2[a, b, c](x: Callable[[a], b], y: Callable[[b], c]) -> Callable[[a], c]:
         return lambda val: y(x(val))
@@ -56,9 +59,10 @@ def compose(*funcs: Callable) -> Callable:
     return reduce(compose2, funcs)
 
 
-def pipe(val, *funcs: Callable):
+def pipe(val, *funcs: Callable) -> Any:
     """
     Applies the functions to the value from left to right.
+    e.g. pipe(3, add_to(1), mul_by(2)) == (3 + 1) * 2 == 8
     """
     return compose(*funcs)(val)
 
@@ -68,6 +72,7 @@ def pipe(val, *funcs: Callable):
 def id[a](x: a) -> a:
     """
     The identity property. Returns the argument.
+    e.g. id(1) == 1
     """
     return x
 
@@ -75,6 +80,7 @@ def id[a](x: a) -> a:
 def always[a](x: a) -> FnN[a]:
     """
     Returns a function that always returns the arg.
+    e.g. always(10)() == 10
     """
     return partial(id, x)
 
@@ -82,6 +88,7 @@ def always[a](x: a) -> FnN[a]:
 def flip[a, b, c](fn: FnB[a, b, c]) -> FnB[b, a, c]:
     """
     Returns a binary function with the argument order flipped.
+    e.g. flip(a -> b -> c) == b -> a -> c
     """
     def _(x: b, y: a): return fn(y, x)
     return _
@@ -90,6 +97,7 @@ def flip[a, b, c](fn: FnB[a, b, c]) -> FnB[b, a, c]:
 def tap[a](fn: Callable, x: a) -> a:
     """
     Calls a function and then returns the argument.
+    e.g. tap(compose(print, add_to(1), print), 2) == print(2), add 1, print(3), return 2
     """
     return compose(fn, id)(x)
 
@@ -98,7 +106,7 @@ def tap[a](fn: Callable, x: a) -> a:
 
 def T(*args) -> bool:
     """
-    Always returns true.
+    Always returns True.
     """
     return True
 
@@ -129,7 +137,7 @@ def either[a](p1: Predicate[a], p2: Predicate[a]) -> Predicate[a]:
 def eq(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.eq.
-    e.g. ( eq(1)(2) ) == ( 1 == 2 )
+    e.g. ( eq(1)(2) ) == ( 1 == 2 ) == False
     """
     return partial(op.eq, x)
 
@@ -137,7 +145,7 @@ def eq(x: Any) -> Predicate[Any]:
 def gt(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.gt.
-    e.g. ( gt(1)(2) ) == ( 2 > 1 )
+    e.g. ( gt(1)(2) ) == ( 2 > 1 ) == True
     """
     return partial(flip(op.gt), x)
 
@@ -145,7 +153,7 @@ def gt(x: Any) -> Predicate[Any]:
 def ge(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.ge.
-    e.g. ( ge(1)(2) ) == ( 2 >= 1 )
+    e.g. ( ge(1)(2) ) == ( 2 >= 1 ) == True
     """
     return partial(flip(op.ge), x)
 
@@ -153,7 +161,7 @@ def ge(x: Any) -> Predicate[Any]:
 def lt(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.lt.
-    e.g. ( lt(1)(2) ) == ( 2 < 1 )
+    e.g. ( lt(1)(2) ) == ( 2 < 1 ) == False
     """
     return partial(flip(op.lt), x)
 
@@ -161,9 +169,41 @@ def lt(x: Any) -> Predicate[Any]:
 def le(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.le.
-    e.g. ( le(1)(2) ) == ( 2 <= 1 )
+    e.g. ( le(1)(2) ) == ( 2 <= 1 ) == False
     """
     return partial(flip(op.le), x)
+
+
+def is_(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.is_.
+    e.g. ( is_(1)(2) ) == ( 1 is 2 ) == False
+    """
+    return partial(op.is_, x)
+
+
+def is_not(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.is_not.
+    e.g. ( is_not(1)(2) ) == ( 1 is not 2 ) == True
+    """
+    return partial(op.is_not, x)
+
+
+def and_(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.and_.
+    e.g. ( and_(True)(False) ) == ( True and False ) == False
+    """
+    return partial(op.and_, x)
+
+
+def or_(x: Any) -> Predicate[Any]:
+    """
+    Curried version of operator.or_.
+    e.g. ( or_(True)(False) ) == ( True or False ) == True
+    """
+    return partial(op.or_, x)
 
 
 # Branches
@@ -180,16 +220,14 @@ def unless[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
     """
     Returns a unary function that only applies the fn param if predicate is false, else returns the arg.
     """
-    def _(p, f, v): return f(v) if not p(v) else v
-    return partial(_, p, fn)
+    return if_else(p, id, fn)
 
 
 def when[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
     """
     Returns a unary function that only applies the fn param if predicate is true, else returns the arg.
     """
-    def _(p, f, v): return f(v) if p(v) else v
-    return partial(_, p, fn)
+    return if_else(p, fn, id)
 
 
 def cond[a, b](if_thens: List[Tuple[Predicate[a], FnU[a, b]]]) -> FnU[a, Optional[b]]:
@@ -203,17 +241,17 @@ def cond[a, b](if_thens: List[Tuple[Predicate[a], FnU[a, b]]]) -> FnU[a, Optiona
     return partial(_, if_thens)
 
 
-def const[a](x: a) -> Callable[[Any], a]:
+def const[a](x: a) -> FnU[Any, a]:
     """
     Returns a unary function that always returns the argument to const, and ignores the arg to the resulting function.
     """
-    def _(val, ignore): return val      # "Ignore is not accessed"... that's the point
+    def _(val, ignore_any_other_args): return val
     return partial(_, x)
 
 
 def none(*args) -> None:
     """
-    Returns a function that always returns None.
+    A function that always returns None.
     """
     return None
 
@@ -242,13 +280,17 @@ def empty[a: (List, Dict, int, str)](x: a) -> a:
     """
     is_a = partial(isinstance, x)
     if is_a(List):
-        return [] #type:ignore
+        assert isinstance(x, List)
+        return []
     elif is_a(Dict):
-        return {} #type:ignore
+        assert isinstance(x, Dict)
+        return {} 
     elif is_a(int):
-        return 0 #type:ignore
+        assert isinstance(x, int)
+        return 0 
     else:
-        return "" #type:ignore
+        assert isinstance(x, str)
+        return "" 
 
 
 def is_empty[a: (List, Dict, int, str)](x: a) -> bool:
@@ -263,6 +305,24 @@ def is_none(x: Any) -> bool:
     Checks if value is None.
     """
     return x is None
+
+
+def contains(x: Container[object]) -> Predicate[object]:
+    """
+    Curried version of operator.contains
+    e.g. ( contains([0, 1, 2])(1) == ( 1 in [0, 1, 2] ) == True
+    """
+    return partial(op.contains, x)
+
+
+# Iterable Generics
+
+def count_of(x: object) -> FnU[Iterable[object], int]:
+    """
+    Curried version of operator.countOf.
+    e.g. count_of(1)([1, 2, 1, 3]) == operator.countOf([1, 2, 1, 3], 1) == 2
+    """
+    return partial(flip(op.countOf), x)
 
 
 # Iterator Specifics
@@ -402,9 +462,10 @@ def split(sep: str, s: str, maxsplits: int = -1) -> List[NewStr]:
 
 # Mathematical Functions
 
-def add_this[a](arg: a) -> FnU[a, a]:
+def add[a](arg: a) -> FnU[a, a]:
     """
     Curried operator.add. Returns unary function that adds this arg.
+    e.g. add(1)(1) == operator.add(1, 1) == 2
     """
     return partial(op.add, arg)
 
@@ -412,6 +473,7 @@ def add_this[a](arg: a) -> FnU[a, a]:
 def sub_from[a](arg: a) -> FnU[a, a]:
     """
     Curried operator.sub. Returns unary function that subtracts from this arg.
+    e.g. sub_from(2)(1) == 2 - 1 == 1
     """
     return partial(op.sub, arg)
 
@@ -419,13 +481,15 @@ def sub_from[a](arg: a) -> FnU[a, a]:
 def sub_this[a](arg: a) -> FnU[a, a]:
     """
     Curried operator.sub. Returns unary function that subtracts this arg.
+    e.g. sub_this(2)(1) == 1 - 2 == (-1)
     """
     return partial(flip(op.sub), arg)
 
 
-def mul_by[a](arg: a) -> FnU[a, a]:
+def mul[a](arg: a) -> FnU[a, a]:
     """
     Curried operator.mul. Returns unary function that multiplies by this arg.
+    e.g. mul(2)(3) == 2 * 3 == 6
     """
     return partial(op.mul, arg)
 
@@ -433,6 +497,7 @@ def mul_by[a](arg: a) -> FnU[a, a]:
 def div_this[a](arg: a) -> FnU[a, a]:
     """
     Curred operator.floordiv. Returns unary function that sets the numerator as this arg.
+    e.g. div_this(6)(3) == 6 // 3 == 2
     """
     return partial(op.floordiv, arg)
 
@@ -440,10 +505,9 @@ def div_this[a](arg: a) -> FnU[a, a]:
 def div_by[a](arg: a) -> FnU[a, a]:
     """
     Curred operator.floordiv. Returns unary function that sets the denominator as this arg.
+    e.g. div_by(6)(3) == 3 // 6 == 0
     """
     return partial(flip(op.floordiv), arg)
-
-
 
 
 #
@@ -455,18 +519,18 @@ def div_by[a](arg: a) -> FnU[a, a]:
 
 if __name__ == "__main__":
     # Curried Built-ins
-    assert list(take(3, map(add_this(1), count()))) == list(take(3, map_(add_this(1))(count())))
+    assert list(take(3, map(add(1), count()))) == list(take(3, map_(add(1))(count())))
     assert list(take(3, filter(gt(2), count())))    == list(take(3,filter_(gt(2))(count())))
 
     # Composers
-    assert compose(len, add_this(10), sub_this(1))("number should be 28") == len("number should be 28") + 10 - 1
-    assert pipe(1, add_this(1), mul_by(3))                                == (1 + 1) * 3
+    assert compose(len, add(10), sub_this(1))("number should be 28") == len("number should be 28") + 10 - 1
+    assert pipe(1, add(1), mul(3))                                == (1 + 1) * 3
 
     # Composition Helpers
     assert id("test")          == "test"
     assert tap(id, "2")        == "2"
     assert always("test")()    == "test"
-    assert tap(add_this(1), 1) == 2
+    assert tap(add(1), 1) == 2
 
     # Logical
     assert T()
@@ -492,21 +556,31 @@ if __name__ == "__main__":
     assert le    (1)(0)
     assert le    (1)(1)
     assert not le(1)(2)
+    assert is_(1)(1)
+    assert not is_(1)(2)
+    assert not is_not(1)(1)
+    assert is_not(1)(2)
+    assert and_(True)(True)
+    assert not and_(True)(False)
+    assert or_(True)(False)
+    assert not or_(False)(False)
+    assert contains([0, 1, 2])(1)
+    assert not contains([0, 1, 2])(3)
 
     # Branches
     assert if_else     (T, const      ("a"), const("b"))("anything") == "a"
     assert if_else     (F, const      ("a"), const("b"))("anything") == "b"
-    assert unless      (T, add_this   (1))        (1)                == 1
-    assert unless      (F, add_this   (1))        (1)                == 2
-    assert when        (T, add_this   (1))        (1)                == 2
-    assert when        (F, add_this   (1))        (1)                == 1
+    assert unless      (T, add   (1))        (1)                     == 1
+    assert unless      (F, add   (1))        (1)                     == 2
+    assert when        (T, add   (1))        (1)                     == 2
+    assert when        (F, add   (1))        (1)                     == 1
     assert const       (1)            ("anything")                   == 1
     assert const       ("this")       (1)                            == "this"
     assert default_to  (10, 11)                                      == 11
     assert default_to  (10, None)                                    == 10
-    assert default_with(10, add_this  (1))        (20)               == 21
+    assert default_with(10, add  (1))        (20)                    == 21
     assert default_with(10, none)     (20)                           == 10
-    condtest: FnU[int, str] = default_with("otherwise", cond([(gt(0), const("is positive"))
+    condtest: FnU[int, str]                                          =  default_with("otherwise", cond([(gt(0), const("is positive"))
                                                                , (eq(0), const("is zero"))
                                                                , (lt(0), const("is negative"))]))
     assert condtest(1) == "is positive"
@@ -525,8 +599,11 @@ if __name__ == "__main__":
     assert is_none(None)
     assert not is_none("this should fail because I'm not None")
 
+    # Iterable Generics
+    assert count_of(1)([1, 1, 0, 1]) == op.countOf([1, 1, 0, 1], 1)
+
     # Iterator Specifics
-    assert list(take(4, iterate(add_this(3), 2))) == [2, 5, 8, 11]
+    assert list(take(4, iterate(add(3), 2))) == [2, 5, 8, 11]
     assert list(take(3, drop(2, count())))        == [2, 3, 4]
     assert head(count())                          == 0
     assert list(take(3, tail(count())))           == [1, 2, 3]
@@ -535,7 +612,7 @@ if __name__ == "__main__":
     assert list(partitiontest2)                   == [0, 1, 2, 3]
 
     # List Functions
-    assert adjust(2, add_this(3), [0, 1, 2, 3]) == [0, 1, 5, 3]
+    assert adjust(2, add(3), [0, 1, 2, 3]) == [0, 1, 5, 3]
     assert move(0, 2, [0, 1, 2, 3, 4]) == [1, 2, 0, 3, 4]
     assert swap(0, 2, [0, 1, 2, 3, 4]) == [2, 1, 0, 3, 4]
     assert update(0, 2, [0, 1, 2, 3, 4]) == [2, 1, 2, 3, 4]
@@ -547,12 +624,9 @@ if __name__ == "__main__":
     assert replace(" ", "|", "replace function test") == "replace|function|test"
 
     # Math Functions
-    assert add_this(1)(7) == 1 + 7
-    assert mul_by(3)(7)   == 3 * 7
+    assert add(1)(7) == 1 + 7
+    assert mul(3)(7)   == 3 * 7
     assert sub_from(7)(3) == 7 - 3
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
-
-
-
