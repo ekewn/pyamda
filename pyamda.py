@@ -445,7 +445,7 @@ def prop[a, b](key: a) -> FnU[Dict[a, b], Optional[b]]:
     """
     Returns a function that given a dictionary returns the value at the key, if present, else None.
     """
-    def _(k: a, d: Dict[a, b]): return d.get(k)
+    def _(k, d): return d.get(k)
     return partial(_, key)
 
 
@@ -457,12 +457,48 @@ def prop_or[a, b](key: a, default: b) -> FnU[Dict[a, b], b]:
     return partial(_, key, default)
 
 
-def prop_eq[a, b](key: a, val: b) -> FnU[Dict[a, b], Predicate[Dict[a, b]]]:
+def prop_eq[a, b](key: a, val: b) -> FnU[Dict[a, b], bool]:
     """
     Returns a function that given a dictionary returns if the value at the key is equal to the val.
     """
     def _(k, val, d): return d.get(k) == val
     return partial(_, key, val)
+
+
+def attr(name: str) -> FnU[object, Optional[Any]]:
+    """
+    Returns a function that given an object returns the value of the object attribute if present, or none.
+    """
+    def _(n, obj): 
+        try:
+            return op.attrgetter(n)(obj)
+        except:
+            return None
+    return partial(_, name)
+
+
+def attr_or(name: str, default: Any) -> FnU[object, Any]:
+    """
+    Returns a function that given an object returns the value of the object attribute if present, or none.
+    """
+    def _(n, obj): 
+        try:
+            return op.attrgetter(n)(obj)
+        except:
+            return default
+    return partial(_, name)
+
+
+def attr_eq(name: str, val: Any) -> FnU[object, bool]:
+    """
+    Returns a function that given an object returns if the value of the object attribute is equal to the val.
+    """
+    def _(n, v, o): 
+        try:
+            return op.attrgetter(n)(o) == v
+        except:
+            return False
+    return partial(_, name, val)
 
 
 # String Functions
@@ -655,6 +691,20 @@ if __name__ == "__main__":
     assert prop_eq("a", "1")(dtest)
     assert not prop_eq("a", "2")(dtest)
     assert not prop_eq("c", "1")(dtest)
+    class __attrtest:
+        def __init__(self):
+            self.a: str = "a"
+            self.one: int = 1
+    attrtest = __attrtest()
+    assert attr("a")(attrtest) == "a"
+    assert attr("one")(attrtest) == 1
+    assert attr("c")(attrtest) == None
+    assert attr_or("a", "default")(attrtest) == "a"
+    assert attr_or("c", "default")(attrtest) == "default"
+    assert attr_eq("a", "a")(attrtest)
+    assert attr_eq("one", 1)(attrtest)
+    assert not attr_eq("a", "2")(attrtest)
+    assert not attr_eq("c", "1")(attrtest)
 
     # String Functions
     assert split(" ", "split function test") == ["split", "function", "test"]
@@ -667,8 +717,4 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
-
-
-
-
 
