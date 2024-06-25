@@ -1,9 +1,10 @@
 import operator as op
 from collections import deque
 from functools import partial, reduce
-from itertools import accumulate, count, filterfalse, islice, repeat, tee
-from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List, Optional,
-                    Tuple)
+from itertools import (accumulate, chain, count, filterfalse, islice, repeat,
+                       tee)
+from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
+                    Optional, Tuple)
 
 #
 #
@@ -440,6 +441,30 @@ def get[a, b](d: Dict[a, b], default: b, key: a) -> b:
     return d.get(key, default)
 
 
+def prop[a, b](key: a) -> FnU[Dict[a, b], Optional[b]]:
+    """
+    Returns a function that given a dictionary returns the value at the key, if present, else None.
+    """
+    def _(k: a, d: Dict[a, b]): return d.get(k)
+    return partial(_, key)
+
+
+def prop_or[a, b](key: a, default: b) -> FnU[Dict[a, b], b]:
+    """
+    Returns a function that given a dictionary returns the value at the key, if present, else the default.
+    """
+    def _(k, default, d): return d.get(k, default)
+    return partial(_, key, default)
+
+
+def prop_eq[a, b](key: a, val: b) -> FnU[Dict[a, b], Predicate[Dict[a, b]]]:
+    """
+    Returns a function that given a dictionary returns if the value at the key is equal to the val.
+    """
+    def _(k, val, d): return d.get(k) == val
+    return partial(_, key, val)
+
+
 # String Functions
 
 type NewStr = str
@@ -619,6 +644,18 @@ if __name__ == "__main__":
     assert cons(0, [0, 1, 2, 3, 4]) == [0, 0, 1, 2, 3, 4]
     assert cons([0, 1], [0, 1, 2, 3, 4]) == [0, 1, 0, 1, 2, 3, 4]
 
+    # Dictionary Functions
+    dtest: Dict[str, str] = {"a": "1", "b": "2"}
+    assert get(dtest, "default", "a") == "1"
+    assert get(dtest, "default", "c") == "default"
+    assert prop("a")(dtest) == "1"
+    assert prop("c")(dtest) == None
+    assert prop_or("a", "default")(dtest) == "1"
+    assert prop_or("c", "default")(dtest) == "default"
+    assert prop_eq("a", "1")(dtest)
+    assert not prop_eq("a", "2")(dtest)
+    assert not prop_eq("c", "1")(dtest)
+
     # String Functions
     assert split(" ", "split function test") == ["split", "function", "test"]
     assert replace(" ", "|", "replace function test") == "replace|function|test"
@@ -630,3 +667,8 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
+
+
+
+
+
