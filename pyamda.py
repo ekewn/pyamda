@@ -31,7 +31,7 @@ type Predicate[a]       = FnU[a, bool]
 
 # Curried Built-ins
 
-def map_[a, b](fn: FnU[a, b]) -> FnU[Iterable[a], Iterable[a]]:
+def map_[a, b](fn: FnU[a, b]) -> FnU[Iterable[a], Iterable[b]]:
     """
     Curried map.
     e.g map_(fn)(iter) == map(fn, iter)
@@ -384,7 +384,7 @@ type NewList[a] = List[a]
 
 def adjust[a](idx: int, fn:FnU[a, a], l: List[a]) -> NewList[a]:
     """
-    Returns a copy of the given list with the element at the index transformed by the given function. The original list remains unchanged.
+    Returns a copy of the list with the element at the index transformed by the given function.
     """
     l2 = l.copy()
     l2[idx] = fn(l2[idx])
@@ -393,7 +393,7 @@ def adjust[a](idx: int, fn:FnU[a, a], l: List[a]) -> NewList[a]:
 
 def move[a](idx_from: int, idx_to: int, l: List[a]) -> NewList[a]:
     """
-    Moves the item at the specified index to the new index.
+    Returns a copy of the list with the the item at the specified index moved to the new index.
     """
     l2 = l.copy()
     l2.insert(idx_to, l2.pop(idx_from))
@@ -402,7 +402,7 @@ def move[a](idx_from: int, idx_to: int, l: List[a]) -> NewList[a]:
 
 def swap[a](idx1: int, idx2: int, l: List[a]) -> NewList[a]:
     """
-    Swaps the items at the specified indices.
+    Returns a copy of the list Swaps the items at the specified indices.
     """
     l2 = l.copy()
     v1, v2 = l[idx1], l[idx2]
@@ -412,7 +412,7 @@ def swap[a](idx1: int, idx2: int, l: List[a]) -> NewList[a]:
 
 def update[a](idx: int, val: a, l: List[a]) -> NewList[a]:
     """
-    Updates the item at the specified index.
+    Returns a copy of the list with the item at the specified index updated.
     """
     l2 = l.copy()
     l2[idx] = val
@@ -421,7 +421,7 @@ def update[a](idx: int, val: a, l: List[a]) -> NewList[a]:
 
 def cons[a](val: a | List[a], l: List[a]) -> NewList[a]:
     """
-    Prepends a val to list.
+    Returns a copy of the list with the value/other list prepended.
     """
     l2 =l.copy()
     if isinstance(val, List):
@@ -430,6 +430,29 @@ def cons[a](val: a | List[a], l: List[a]) -> NewList[a]:
     else:
         l2.insert(0, val)
     return l2
+
+
+def remove[a](first: int, last: int, l: List[a]) -> NewList[a]:
+    """
+    Returns a copy of the list with all items from first to last indices given (not including the value at the last index) removed.
+    """
+    l2 = l.copy()
+    del l2[first:last]
+    return l2
+
+
+def startswith[a](val: a, l: List[a]) -> bool:
+    """
+    Does the list start with the given value?
+    """
+    return l[0] == val
+
+
+def endswith[a](val: a, l: List[a]) -> bool:
+    """
+    Does the list end with the given value?
+    """
+    return l[len(l)-1] == val
 
 
 # Dictionary Functions
@@ -679,6 +702,12 @@ if __name__ == "__main__":
     assert update(0, 2, [0, 1, 2, 3, 4]) == [2, 1, 2, 3, 4]
     assert cons(0, [0, 1, 2, 3, 4]) == [0, 0, 1, 2, 3, 4]
     assert cons([0, 1], [0, 1, 2, 3, 4]) == [0, 1, 0, 1, 2, 3, 4]
+    assert startswith(0, [0, 1, 2])
+    assert not startswith(0, [1, 2])
+    assert endswith(2, [0, 1, 2])
+    assert not endswith(2, [0, 1])
+    assert remove(0, 2, [0, 1, 2, 3]) == [2, 3]
+    assert not remove(0, 2, [0, 1, 2, 3]) == [1, 2, 3]
 
     # Dictionary Functions
     dtest: Dict[str, str] = {"a": "1", "b": "2"}
