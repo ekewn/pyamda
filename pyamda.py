@@ -4,7 +4,7 @@ from functools import partial, reduce
 from itertools import (accumulate, chain, count, filterfalse, islice, repeat,
                        tee)
 from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
-                    Optional, Tuple)
+                    NoReturn, Optional, Tuple)
 
 #
 #
@@ -267,12 +267,23 @@ def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
 
 def try_except[a, b](tryer: FnU[a, b], excepter: FnB[a, Exception, Exception]) -> FnU[a, b | Exception]:
     """
-    Guards a formula that might throw an error. Will catch and return an exception if it occurs.
+    Guards a formula that might throw an error. Will catch and run the provide excepter formula.
     """
     def _(t, e, v):
         try: return t(v)
         except Exception as err: return e(v, err)
     return partial(_, tryer, excepter)
+
+
+def try_[a, b](tryer: FnU[a, b]) -> FnU[a, b | Exception]:
+    """
+    Guards a formula that might throw an error. If an exception is encountered, the exception will be returned
+    with the arg prepended to the exception body.
+    """
+    def _(t, v):
+        try: return t(v)
+        except Exception as err: return Exception(f"Arg: {v} \n Err: {err}")
+    return partial(_, tryer)
 
 
 def optional[a, b](tryer: FnU[a, b]) -> FnU[a, Optional[b]]:
@@ -285,11 +296,40 @@ def optional[a, b](tryer: FnU[a, b]) -> FnU[a, Optional[b]]:
     return partial(_, tryer)
 
 
+def on_success[a, b](fn: FnU[a, b]) -> FnU[a | Exception, b | Exception]:
+    """
+    Abstracts the common flow of only working on non-err values in if_else blocks.
+    Function will only call if the value is not an error, else the error will be passed along.
+    """
+    def _(fn: FnU[a, b], v: a | Exception):
+        if not isinstance(v, Exception): return fn(v)
+        else: return v
+    return partial(_, fn)
+
+
+def on_err[a, b](fn: FnU[Exception, b]) -> FnU[Exception | a, b | a]:
+    """
+    Abstracts the common flow of only working on err values in if_else blocks.
+    Function will only call if the value is an error, else the value will be passed along.
+    """
+    def _(fn: FnU[Exception, b], v: Exception | a):
+        if isinstance(v, Exception): return fn(v)
+        else: return v
+    return partial(_, fn)
+
+
 def none(*args) -> None:
     """
     A function that always returns None.
     """
     return None
+
+
+def throw(e: Exception) -> NoReturn:
+    """
+    A function that raises exceptions.
+    """
+    raise e
 
 
 # Container-related
@@ -326,6 +366,13 @@ def is_none(x: Any) -> bool:
     Checks if value is None.
     """
     return x is None
+
+
+def is_err(x: Any) -> bool:
+    """
+    Checks if value is an Exception.
+    """
+    return isinstance(x, Exception)
 
 
 def contains(x: Container[object]) -> Predicate[object]:
@@ -690,8 +737,11 @@ if __name__ == "__main__":
     assert condtest(1) == "is positive"
     assert condtest(0) == "is zero"
     assert condtest(-1) == "is negative"
-    #tryexcept
+    #try_except
+    #try_
     #optional
+    #on_success
+    #on_err
 
     # Container-related
     assert all([is_empty(empty(["list"]))
@@ -704,6 +754,8 @@ if __name__ == "__main__":
                , is_empty("")])
     assert is_none(None)
     assert not is_none("this should fail because I'm not None")
+    #is_err
+    #throw
 
     # Iterable Generics
     assert count_of(1)([1, 1, 0, 1]) == op.countOf([1, 1, 0, 1], 1)
@@ -768,4 +820,6 @@ if __name__ == "__main__":
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
+
+
 
