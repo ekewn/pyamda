@@ -207,7 +207,7 @@ def or_(x: Any) -> Predicate[Any]:
     return partial(op.or_, x)
 
 
-# Branches
+# Control Flow
 
 def if_else[a, b, c](p: Predicate[a], if_true: FnU[a, b], if_false: FnU[a , c]) -> FnU[a, b | c]:
     """
@@ -250,13 +250,6 @@ def const[a](x: a) -> FnU[Any, a]:
     return partial(_, x)
 
 
-def none(*args) -> None:
-    """
-    A function that always returns None.
-    """
-    return None
-
-
 def default_to[a](default: a, val: a) -> a:
     """
     Returns default value if val is None.
@@ -270,6 +263,33 @@ def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
     """
     def _(d, f, v): return d if f(v) is None else f(v)
     return partial(_, default, fn)
+
+
+def try_except[a, b](tryer: FnU[a, b], excepter: FnB[a, Exception, Exception]) -> FnU[a, b | Exception]:
+    """
+    Guards a formula that might throw an error. Will catch and return an exception if it occurs.
+    """
+    def _(t, e, v):
+        try: return t(v)
+        except Exception as err: return e(v, err)
+    return partial(_, tryer, excepter)
+
+
+def optional[a, b](tryer: FnU[a, b]) -> FnU[a, Optional[b]]:
+    """
+    Guards a formula that might throw an error. Will return the None an exception occurs.
+    """
+    def _(t, v):
+        try: return t(v)
+        except: return None
+    return partial(_, tryer)
+
+
+def none(*args) -> None:
+    """
+    A function that always returns None.
+    """
+    return None
 
 
 # Container-related
@@ -651,7 +671,7 @@ if __name__ == "__main__":
     assert contains([0, 1, 2])(1)
     assert not contains([0, 1, 2])(3)
 
-    # Branches
+    # Control Flow
     assert if_else     (T, const      ("a"), const("b"))("anything") == "a"
     assert if_else     (F, const      ("a"), const("b"))("anything") == "b"
     assert unless      (T, add   (1))        (1)                     == 1
@@ -670,6 +690,8 @@ if __name__ == "__main__":
     assert condtest(1) == "is positive"
     assert condtest(0) == "is zero"
     assert condtest(-1) == "is negative"
+    #tryexcept
+    #optional
 
     # Container-related
     assert all([is_empty(empty(["list"]))
