@@ -267,7 +267,7 @@ def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
 
 def try_except[a, b](tryer: FnU[a, b], excepter: FnB[a, Exception, Exception]) -> FnU[a, b | Exception]:
     """
-    Guards a formula that might throw an error. Will catch and run the provide excepter formula.
+    Guards a formula that might throw an error. Will catch and run the provided excepter formula.
     """
     def _(t, e, v):
         try: return t(v)
@@ -325,7 +325,7 @@ def none(*args) -> None:
     return None
 
 
-def throw(e: Exception) -> NoReturn:
+def except_(e: Exception) -> Exception:
     """
     A function that raises exceptions.
     """
@@ -737,9 +737,10 @@ if __name__ == "__main__":
     assert condtest(1) == "is positive"
     assert condtest(0) == "is zero"
     assert condtest(-1) == "is negative"
-    #try_except
-    #try_
-    #optional
+    assert isinstance(try_except(div_by(0), lambda v, e: Exception(f"arg: {v} caused err {e}"))(1), Exception)
+    assert isinstance(try_(div_by(0))(1), Exception)
+    assert optional(div_by(0))(1) is None
+    assert optional(div_by(1))(1) == 1
     #on_success
     #on_err
 
@@ -754,8 +755,8 @@ if __name__ == "__main__":
                , is_empty("")])
     assert is_none(None)
     assert not is_none("this should fail because I'm not None")
-    #is_err
-    #throw
+    assert is_err(Exception("this is err!"))
+    assert not is_err(1)
 
     # Iterable Generics
     assert count_of(1)([1, 1, 0, 1]) == op.countOf([1, 1, 0, 1], 1)
