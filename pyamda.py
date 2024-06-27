@@ -1,10 +1,10 @@
 import operator as op
 from collections import deque
 from functools import partial, reduce
-from itertools import (accumulate, chain, count, filterfalse, islice, repeat,
+from itertools import (accumulate, count, filterfalse, islice, repeat,
                        tee)
 from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
-                    NoReturn, Optional, Tuple)
+                    Optional, Tuple)
 
 #
 #
@@ -70,7 +70,7 @@ def pipe(val, *funcs: Callable) -> Any:
 
 # Composition Helpers
 
-def id[a](x: a) -> a:
+def identity[a](x: a) -> a:
     """
     The identity property. Returns the argument.
     e.g. id(1) == 1
@@ -83,7 +83,7 @@ def always[a](x: a) -> FnN[a]:
     Returns a function that always returns the arg.
     e.g. always(10)() == 10
     """
-    return partial(id, x)
+    return partial(identity, x)
 
 
 def flip[a, b, c](fn: FnB[a, b, c]) -> FnB[b, a, c]:
@@ -100,7 +100,37 @@ def tap[a](fn: Callable, x: a) -> a:
     Calls a function and then returns the argument.
     e.g. tap(compose(print, add_to(1), print), 2) == print(2), add 1, print(3), return 2
     """
-    return compose(fn, id)(x)
+    return compose(fn, identity)(x)
+
+
+def const[a](x: a) -> FnU[Any, a]:
+    """
+    Returns a unary function that always returns the argument to const, and ignores the arg to the resulting function.
+    """
+    def _(val, ignore_any_other_args): return val
+    return partial(_, x)
+
+
+def none(*args) -> None:
+    """
+    A function that always returns None.
+    """
+    return None
+
+
+def default_to[a](default: a, val: a) -> a:
+    """
+    Returns default value if val is None.
+    """
+    return default if val is None else val
+
+
+def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
+    """
+    Returns a function that will return the default value if the result is null.
+    """
+    def _(d, f, v): return d if f(v) is None else f(v)
+    return partial(_, default, fn)
 
 
 # Logical
@@ -221,14 +251,14 @@ def unless[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
     """
     Returns a unary function that only applies the fn param if predicate is false, else returns the arg.
     """
-    return if_else(p, id, fn)
+    return if_else(p, identity, fn)
 
 
 def when[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
     """
     Returns a unary function that only applies the fn param if predicate is true, else returns the arg.
     """
-    return if_else(p, fn, id)
+    return if_else(p, fn, identity)
 
 
 def cond[a, b](if_thens: List[Tuple[Predicate[a], FnU[a, b]]]) -> FnU[a, Optional[b]]:
@@ -240,29 +270,6 @@ def cond[a, b](if_thens: List[Tuple[Predicate[a], FnU[a, b]]]) -> FnU[a, Optiona
             if it[0](arg):
                 return it[1](arg)
     return partial(_, if_thens)
-
-
-def const[a](x: a) -> FnU[Any, a]:
-    """
-    Returns a unary function that always returns the argument to const, and ignores the arg to the resulting function.
-    """
-    def _(val, ignore_any_other_args): return val
-    return partial(_, x)
-
-
-def default_to[a](default: a, val: a) -> a:
-    """
-    Returns default value if val is None.
-    """
-    return default if val is None else val
-
-
-def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
-    """
-    Returns a function that will return the default value if the result is null.
-    """
-    def _(d, f, v): return d if f(v) is None else f(v)
-    return partial(_, default, fn)
 
 
 def try_except[a, b](tryer: FnU[a, b], excepter: FnB[a, Exception, Exception]) -> FnU[a, b | Exception]:
@@ -284,6 +291,13 @@ def try_[a, b](tryer: FnU[a, b]) -> FnU[a, b | Exception]:
         try: return t(v)
         except Exception as err: return Exception(f"Arg: {v} \n Err: {err}")
     return partial(_, tryer)
+
+
+def raise_(e: Exception) -> Exception:
+    """
+    A function that raises exceptions.
+    """
+    raise e
 
 
 def optional[a, b](tryer: FnU[a, b]) -> FnU[a, Optional[b]]:
@@ -316,20 +330,6 @@ def on_err[a, b](fn: FnU[Exception, b]) -> FnU[Exception | a, b | a]:
         if isinstance(v, Exception): return fn(v)
         else: return v
     return partial(_, fn)
-
-
-def none(*args) -> None:
-    """
-    A function that always returns None.
-    """
-    return None
-
-
-def except_(e: Exception) -> Exception:
-    """
-    A function that raises exceptions.
-    """
-    raise e
 
 
 # Container-related
@@ -373,6 +373,14 @@ def is_err(x: Any) -> bool:
     Checks if value is an Exception.
     """
     return isinstance(x, Exception)
+
+
+def err_val(x: Exception, idx: int = 0) -> Any:
+    """
+    Gets the value/text out of an exception.
+    Note: Exceptions aren't parameterize-able so we can't determine the type of value we get out of it.
+    """
+    return x.args[idx]
 
 
 def contains(x: Container[object]) -> Predicate[object]:
@@ -499,6 +507,15 @@ def cons[a](val: a | List[a], l: List[a]) -> NewList[a]:
     return l2
 
 
+def pluck(name_idx: int | str, l: List) -> NewList:
+    """
+    Returns a copy of the list by plucking a property (if given a property name) or an item (if given an index)
+    off of each object/item in the list.
+    """
+    l2 = l.copy()
+    return list(map(op.itemgetter(name_idx), l2))
+
+
 def remove[a](first: int, last: int, l: List[a]) -> NewList[a]:
     """
     Returns a copy of the list with all items from first to last indices given (not including the value at the last index) removed.
@@ -506,6 +523,14 @@ def remove[a](first: int, last: int, l: List[a]) -> NewList[a]:
     l2 = l.copy()
     del l2[first:last]
     return l2
+
+
+def without[a](items_to_remove: List[a], l: List[a]) -> List[a]:
+    """
+    Returns a copy of the list with all the items from the first list (items to remove) taken out of the given list.
+    """
+    l2 = l.copy()
+    return list(filterfalse(contains(items_to_remove), l2))
 
 
 def startswith[a](val: a, l: List[a]) -> bool:
@@ -678,10 +703,16 @@ if __name__ == "__main__":
     assert pipe(1, add(1), mul(3))                                == (1 + 1) * 3
 
     # Composition Helpers
-    assert id("test")          == "test"
-    assert tap(id, "2")        == "2"
-    assert always("test")()    == "test"
-    assert tap(add(1), 1) == 2
+    assert identity("test")                        == "test"
+    assert tap(identity, "2")                      == "2"
+    assert always("test")()                        == "test"
+    assert tap(add(1), 1)                          == 2
+    assert const       (1)            ("anything") == 1
+    assert const       ("this")       (1)          == "this"
+    assert default_to  (10, 11)                    == 11
+    assert default_to  (10, None)                  == 10
+    assert default_with(10, add  (1))        (20)  == 21
+    assert default_with(10, none)     (20)         == 10
 
     # Logical
     assert T()
@@ -719,30 +750,26 @@ if __name__ == "__main__":
     assert not contains([0, 1, 2])(3)
 
     # Control Flow
-    assert if_else     (T, const      ("a"), const("b"))("anything") == "a"
-    assert if_else     (F, const      ("a"), const("b"))("anything") == "b"
-    assert unless      (T, add   (1))        (1)                     == 1
-    assert unless      (F, add   (1))        (1)                     == 2
-    assert when        (T, add   (1))        (1)                     == 2
-    assert when        (F, add   (1))        (1)                     == 1
-    assert const       (1)            ("anything")                   == 1
-    assert const       ("this")       (1)                            == "this"
-    assert default_to  (10, 11)                                      == 11
-    assert default_to  (10, None)                                    == 10
-    assert default_with(10, add  (1))        (20)                    == 21
-    assert default_with(10, none)     (20)                           == 10
-    condtest: FnU[int, str]                                          =  default_with("otherwise", cond([(gt(0), const("is positive"))
-                                                               , (eq(0), const("is zero"))
-                                                               , (lt(0), const("is negative"))]))
-    assert condtest(1) == "is positive"
-    assert condtest(0) == "is zero"
-    assert condtest(-1) == "is negative"
-    assert isinstance(try_except(div_by(0), lambda v, e: Exception(f"arg: {v} caused err {e}"))(1), Exception)
-    assert isinstance(try_(div_by(0))(1), Exception)
+    assert if_else     (T, const      ("a"), identity)("anything") == "a"
+    assert if_else     (F, const      ("a"), identity)("anything") == "anything"
+    assert unless      (T, add   (1))        (1)                   == 1
+    assert unless      (F, add   (1))        (1)                   == 2
+    assert when        (T, add   (1))        (1)                   == 2
+    assert when        (F, add   (1))        (1)                   == 1
+    condtest: FnU[int, str]                                        =  default_with("otherwise", cond([(gt(0), const("is positive"))
+                                                                                                    , (eq(0), const("is zero"))
+                                                                                                    , (lt(0), const("is negative"))]))
+    assert condtest(1)                                    == "is positive"
+    assert condtest(0)                                    == "is zero"
+    assert condtest(-1)                                   == "is negative"
+    assert is_err(try_except(div_by(0), lambda v, e: Exception(f"arg: {v} caused err {e}"))(1))
+    assert is_err(try_(div_by(0))(1))
     assert optional(div_by(0))(1) is None
-    assert optional(div_by(1))(1) == 1
-    #on_success
-    #on_err
+    assert optional(div_by(1))(1)                         == 1
+    assert on_success(add(1))(1)                          == 2
+    assert is_err(on_success(add(1))(Exception()))
+    assert on_err(add(1))(1)                              == 1
+    assert on_err(compose(err_val, add(1)))(Exception(1)) == 2
 
     # Container-related
     assert all([is_empty(empty(["list"]))
@@ -763,33 +790,36 @@ if __name__ == "__main__":
 
     # Iterator Specifics
     assert list(take(4, iterate(add(3), 2))) == [2, 5, 8, 11]
-    assert list(take(3, drop(2, count())))        == [2, 3, 4]
-    assert head(count())                          == 0
-    assert list(take(3, tail(count())))           == [1, 2, 3]
-    partitiontest1, partitiontest2                =  partition(gt(3), take(6, count()))
-    assert list(partitiontest1)                   == [4, 5]
-    assert list(partitiontest2)                   == [0, 1, 2, 3]
+    assert list(take(3, drop(2, count())))   == [2, 3, 4]
+    assert head(count())                     == 0
+    assert list(take(3, tail(count())))      == [1, 2, 3]
+    partitiontest1, partitiontest2           =  partition(gt(3), take(6, count()))
+    assert list(partitiontest1)              == [4, 5]
+    assert list(partitiontest2)              == [0, 1, 2, 3]
 
     # List Functions
-    assert adjust(2, add(3), [0, 1, 2, 3]) == [0, 1, 5, 3]
-    assert move(0, 2, [0, 1, 2, 3, 4]) == [1, 2, 0, 3, 4]
-    assert swap(0, 2, [0, 1, 2, 3, 4]) == [2, 1, 0, 3, 4]
-    assert update(0, 2, [0, 1, 2, 3, 4]) == [2, 1, 2, 3, 4]
-    assert cons(0, [0, 1, 2, 3, 4]) == [0, 0, 1, 2, 3, 4]
-    assert cons([0, 1], [0, 1, 2, 3, 4]) == [0, 1, 0, 1, 2, 3, 4]
+    assert adjust(2, add(3), [0, 1, 2, 3])  == [0, 1, 5, 3]
+    assert move(0, 2, [0, 1, 2, 3, 4])      == [1, 2, 0, 3, 4]
+    assert swap(0, 2, [0, 1, 2, 3, 4])      == [2, 1, 0, 3, 4]
+    assert update(0, 2, [0, 1, 2, 3, 4])    == [2, 1, 2, 3, 4]
+    assert cons(0, [0, 1, 2, 3, 4])         == [0, 0, 1, 2, 3, 4]
+    assert cons([0, 1], [0, 1, 2, 3, 4])    == [0, 1, 0, 1, 2, 3, 4]
     assert startswith(0, [0, 1, 2])
     assert not startswith(0, [1, 2])
     assert endswith(2, [0, 1, 2])
     assert not endswith(2, [0, 1])
-    assert remove(0, 2, [0, 1, 2, 3]) == [2, 3]
-    assert not remove(0, 2, [0, 1, 2, 3]) == [1, 2, 3]
+    assert remove(0, 2, [0, 1, 2, 3])       == [2, 3]
+    assert not remove(0, 2, [0, 1, 2, 3])   == [1, 2, 3]
+    assert pluck(0, [(0, 1), (0, 1)])       == [0, 0]
+    assert pluck("a", [{"a": 0}, {"a": 0}]) == [0, 0]
+    assert without([0, 1], [0, 2, 3, 1])    == [2, 3]
 
     # Dictionary Functions
-    dtest: Dict[str, str] = {"a": "1", "b": "2"}
-    assert get(dtest, "default", "a") == "1"
-    assert get(dtest, "default", "c") == "default"
-    assert prop("a")(dtest) == "1"
-    assert prop("c")(dtest) == None
+    dtest: Dict[str, str]                 =  {"a": "1", "b": "2"}
+    assert get(dtest, "default", "a")     == "1"
+    assert get(dtest, "default", "c")     == "default"
+    assert prop("a")(dtest)               == "1"
+    assert prop("c")(dtest)               == None
     assert prop_or("a", "default")(dtest) == "1"
     assert prop_or("c", "default")(dtest) == "default"
     assert prop_eq("a", "1")(dtest)
@@ -800,9 +830,9 @@ if __name__ == "__main__":
             self.a: str = "a"
             self.one: int = 1
     attrtest = __attrtest()
-    assert attr("a")(attrtest) == "a"
-    assert attr("one")(attrtest) == 1
-    assert attr("c")(attrtest) == None
+    assert attr("a")(attrtest)               == "a"
+    assert attr("one")(attrtest)             == 1
+    assert attr("c")(attrtest)               == None
     assert attr_or("a", "default")(attrtest) == "a"
     assert attr_or("c", "default")(attrtest) == "default"
     assert attr_eq("a", "a")(attrtest)
@@ -811,16 +841,13 @@ if __name__ == "__main__":
     assert not attr_eq("c", "1")(attrtest)
 
     # String Functions
-    assert split(" ", "split function test") == ["split", "function", "test"]
+    assert split(" ", "split function test")          == ["split", "function", "test"]
     assert replace(" ", "|", "replace function test") == "replace|function|test"
 
     # Math Functions
-    assert add(1)(7) == 1 + 7
-    assert mul(3)(7)   == 3 * 7
+    assert add(1)(7)      == 1 + 7
+    assert mul(3)(7)      == 3 * 7
     assert sub_from(7)(3) == 7 - 3
     assert sub_this(3)(7) == 7 - 3
     assert div_this(8)(4) == 8 / 4
     assert div_by(4)(8)   == 8 / 4
-
-
-
