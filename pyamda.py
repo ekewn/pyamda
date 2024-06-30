@@ -4,7 +4,7 @@ from functools import partial, reduce
 from itertools import (accumulate, count, filterfalse, islice, repeat,
                        tee)
 from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
-                    Optional, Tuple, assert_type)
+                    Optional, Tuple)
 
 #
 #
@@ -14,8 +14,8 @@ from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
 
 
 type IO                 = None
-type FnN[a]             = Callable[[], a]           # Nullary Function
-type FnU[a, b]          = Callable[[a], b]          # Unary...
+type FnN[a]             = Callable[[], a]           # Nullary Function i.e. takes no arguments
+type FnU[a, b]          = Callable[[a], b]          # Unary i.e. takes one argument
 type FnB[a, b, c]       = Callable[[a, b], c]       # Binary...
 type FnT[a, b, c, d]    = Callable[[a, b, c], d]    # Ternary...
 type FnQ[a, b, c, d, e] = Callable[[a, b, c, d], e] # Quaternary...
@@ -304,11 +304,11 @@ def try_except[a, b](tryer: FnU[a, b], excepter: FnB[a, Exception, Exception]) -
 def try_[a, b](tryer: FnU[a, b]) -> FnU[a, b | Exception]:
     """
     Guards a formula that might throw an error. If an exception is encountered, the exception will be returned
-    with the arg prepended to the exception body.
+    with the arg nested in the exception i.e. you can retrieve it by doing err_val(Exception).
     """
     def _(t, v):
         try: return t(v)
-        except Exception as err: return Exception(f"Arg: {v} \n Err: {err}")
+        except Exception as err: return Exception(v, err)
     return partial(_, tryer)
 
 
