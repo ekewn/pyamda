@@ -549,6 +549,12 @@ def endswith[a](val: a, l: List[a]) -> bool:
 
 # Dictionary Functions
 
+def is_dict(x: Any) -> bool:
+    """
+    Is val dict?
+    """
+    return isinstance(x, dict)
+
 def get[a, b](d: Dict[a, b], default: b, key: a) -> b:
     """
     Dict.get alias.
@@ -556,28 +562,36 @@ def get[a, b](d: Dict[a, b], default: b, key: a) -> b:
     return d.get(key, default)
 
 
-def prop[a, b](key: a) -> FnU[Dict[a, b], Optional[b]]:
+def prop(key: str, d: Dict[str, Any]) -> Optional[Any]:
     """
-    Returns a function that given a dictionary returns the value at the key, if present, else None.
+    Recursively checks the object to return the value at the key, if present, else None.
     """
-    def _(k, d): return d.get(k)
-    return partial(_, key)
+    if key in d:
+        return d[key]
+    else:
+        for v in list(filter(is_dict, d.values())):
+            return prop(key, v)
 
 
-def prop_or[a, b](key: a, default: b) -> FnU[Dict[a, b], b]:
+def props(keys: List[str], d: Dict[str, Any]) -> List[Optional[Any]]:
     """
-    Returns a function that given a dictionary returns the value at the key, if present, else the default.
+    Returns values from multiple keys if they exist on the object.
     """
-    def _(k, default, d): return d.get(k, default)
-    return partial(_, key, default)
+    return [prop(k, d) for k in keys]
 
 
-def prop_eq[a, b](key: a, val: b) -> FnU[Dict[a, b], bool]:
+def prop_or(key: str, default: Any, d: Dict[str, Any]) -> Any:
     """
-    Returns a function that given a dictionary returns if the value at the key is equal to the val.
+    Returns default value if key is not found in the object.
     """
-    def _(k, val, d): return d.get(k) == val
-    return partial(_, key, val)
+    return default if prop(key, d) is None else prop(key, d)
+
+
+def prop_eq(key: str, val: Any, d: Dict[str, Any]) -> bool:
+    """
+    Returns true if key is in the object.
+    """
+    return prop(key, d) == val
 
 
 def attr(name: str) -> FnU[object, Optional[Any]]:
@@ -818,13 +832,13 @@ if __name__ == "__main__":
     dtest: Dict[str, str]                 =  {"a": "1", "b": "2"}
     assert get(dtest, "default", "a")     == "1"
     assert get(dtest, "default", "c")     == "default"
-    assert prop("a")(dtest)               == "1"
-    assert prop("c")(dtest)               == None
-    assert prop_or("a", "default")(dtest) == "1"
-    assert prop_or("c", "default")(dtest) == "default"
-    assert prop_eq("a", "1")(dtest)
-    assert not prop_eq("a", "2")(dtest)
-    assert not prop_eq("c", "1")(dtest)
+    assert prop("a", dtest)               == "1"
+    assert prop("c", dtest)               == None
+    assert prop_or("a", "default", dtest) == "1"
+    assert prop_or("c", "default", dtest) == "default"
+    assert prop_eq("a", "1", dtest)
+    assert not prop_eq("a", "2", dtest)
+    assert not prop_eq("c", "1", dtest)
     class __attrtest:
         def __init__(self):
             self.a: str = "a"
