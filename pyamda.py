@@ -4,7 +4,7 @@ from functools import partial, reduce
 from itertools import (accumulate, count, filterfalse, islice, repeat,
                        tee)
 from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
-                    Optional, Tuple)
+                    Optional, Tuple, assert_type)
 
 #
 #
@@ -106,14 +106,17 @@ def tap[a](fn: Callable, x: a) -> a:
 def const[a](x: a) -> FnU[Any, a]:
     """
     Returns a unary function that always returns the argument to const, and ignores the arg to the resulting function.
+    e.g. c = const(1)
+    c("literally any arg") == 1
     """
-    def _(val, ignore_any_other_args): return val
+    def _(val, *args): return val
     return partial(_, x)
 
 
 def none(*args) -> None:
     """
     A function that always returns None.
+    e.g. none() == None
     """
     return None
 
@@ -121,13 +124,19 @@ def none(*args) -> None:
 def default_to[a](default: a, val: a) -> a:
     """
     Returns default value if val is None.
+    e.g.
+    default_to("a", None)(None) == "a"
+    default_to("a", None)("literally any arg") == "literally any arg"
+
     """
     return default if val is None else val
 
 
 def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
     """
-    Returns a function that will return the default value if the result is null.
+    Returns a function that replaces the None case of the given function with the default value.
+    e.g.
+    func_with_defaulting = default_with("my default value", func_that_could_return_none)
     """
     def _(d, f, v): return d if f(v) is None else f(v)
     return partial(_, default, fn)
@@ -152,6 +161,7 @@ def F(*args) -> bool:
 def both[a](p1: Predicate[a], p2: Predicate[a]) -> Predicate[a]:
     """
     Returns a function that returns True if both of the predicates are true.
+    e.g. between_10_and_20 = both(lt(20), gt(10))
     """
     def _(x, y, arg) -> bool: return x(arg) and y(arg)
     return partial(_, p1, p2)
@@ -160,6 +170,7 @@ def both[a](p1: Predicate[a], p2: Predicate[a]) -> Predicate[a]:
 def either[a](p1: Predicate[a], p2: Predicate[a]) -> Predicate[a]:
     """
     Returns a function that returns True if either of the predicates are true.
+    e.g. greater_than_10_or_str = either(gt(10), is_str)
     """
     def _(x, y, arg) -> bool: return x(arg) or y(arg)
     return partial(_, p1, p2)
@@ -235,6 +246,14 @@ def or_(x: Any) -> Predicate[Any]:
     e.g. ( or_(True)(False) ) == ( True or False ) == True
     """
     return partial(op.or_, x)
+
+
+def complement[a](p: Predicate[a]) -> Predicate[a]:
+    """
+    Returns a predicate that will return false when the given predicate would return true.
+    """
+    def _(pred, val): return not pred(val)
+    return partial(_, p)
 
 
 # Control Flow
@@ -373,6 +392,48 @@ def is_err(x: Any) -> bool:
     Checks if value is an Exception.
     """
     return isinstance(x, Exception)
+
+
+def is_str(x: Any) -> bool:
+    """
+    Checks if value is a string.
+    """
+    return isinstance(x, str)
+
+
+def is_int(x: Any) -> bool:
+    """
+    Checks if value is an integer.
+    """
+    return isinstance(x, int)
+
+
+def is_bool(x: Any) -> bool:
+    """
+    Checks if value is a boolean.
+    """
+    return isinstance(x, bool)
+
+
+def is_dict(x: Any) -> bool:
+    """
+    Checks if value is a boolean.
+    """
+    return isinstance(x, dict)
+
+
+def is_list(x: Any) -> bool:
+    """
+    Checks if value is a list.
+    """
+    return isinstance(x, list)
+
+
+def is_float(x: Any) -> bool:
+    """
+    Checks if value is a floating point number.
+    """
+    return isinstance(x, float)
 
 
 def err_val(x: Exception, idx: int = 0) -> Any:
@@ -549,11 +610,7 @@ def endswith[a](val: a, l: List[a]) -> bool:
 
 # Dictionary Functions
 
-def is_dict(x: Any) -> bool:
-    """
-    Is val dict?
-    """
-    return isinstance(x, dict)
+type NewDict = Dict
 
 def get[a, b](d: Dict[a, b], default: b, key: a) -> b:
     """
@@ -577,7 +634,7 @@ def props(keys: List[str], d: Dict[str, Any]) -> List[Optional[Any]]:
     """
     Returns values from multiple keys if they exist on the object.
     """
-    return [prop(k, d) for k in keys]
+    return list(map(partial(flip(prop), d), keys))
 
 
 def prop_or(key: str, default: Any, d: Dict[str, Any]) -> Any:
@@ -593,6 +650,38 @@ def prop_eq(key: str, val: Any, d: Dict[str, Any]) -> bool:
     """
     return prop(key, d) == val
 
+
+def prop_satisfies(key: str, p: Predicate[Any], d: Dict[str, Any]) -> bool:
+    """
+    Returns true if prop satisfies the predicate.
+    """
+    return p(prop(key, d))
+
+
+def pick(keys: List[str], d: Dict[str, Any]) -> NewDict[str, Any]:
+    """
+    Returns partial copies of the given dictionary with only the specified keys.
+    Any keys that don't exist in the dictionary will not be included in the copy,
+    i.e. they'll raise a KeyError if you try to attempt them.
+    """
+    return {k: v for k, v in d.items() if k in keys}
+
+
+def omit(keys: List[str], d: Dict[str, Any]) -> NewDict[str, Any]:
+    """
+    Returns partial copies of the given dictionary with the specified keys dropped.
+    """
+    return {k: v for k, v in d.items() if k not in keys}
+
+
+def project(keys: List[str], ds: List[Dict[str, Any]]) -> List[NewDict[str, Any]]:
+    """
+    Think of this as an SQL select query. Gets the props off of each dict in the list.
+    """
+    return list(map(partial(pick, keys), ds))
+
+
+# Class Instance Functions
 
 def attr(name: str) -> FnU[object, Optional[Any]]:
     """
@@ -762,6 +851,8 @@ if __name__ == "__main__":
     assert not or_(False)(False)
     assert contains([0, 1, 2])(1)
     assert not contains([0, 1, 2])(3)
+    assert complement(is_none)(None)             == False
+    assert complement(complement(is_none))(None) == True
 
     # Control Flow
     assert if_else     (T, const      ("a"), identity)("anything") == "a"
@@ -794,6 +885,12 @@ if __name__ == "__main__":
                , is_empty({})
                , is_empty(0)
                , is_empty("")])
+    assert all([is_str("string")
+                , is_list([1, 2])
+                , is_bool(True)
+                , is_float(3.14)
+                , is_int(1)
+                , is_dict({"1" : 1})])
     assert is_none(None)
     assert not is_none("this should fail because I'm not None")
     assert is_err(Exception("this is err!"))
@@ -829,16 +926,22 @@ if __name__ == "__main__":
     assert without([0, 1], [0, 2, 3, 1])    == [2, 3]
 
     # Dictionary Functions
-    dtest: Dict[str, str]                 =  {"a": "1", "b": "2"}
+    dtest: Dict[str, str]                 =  {"a": "1", "b": "2", "z" : "3"}
     assert get(dtest, "default", "a")     == "1"
     assert get(dtest, "default", "c")     == "default"
     assert prop("a", dtest)               == "1"
     assert prop("c", dtest)               == None
+    assert props(["a", "b", "c"], dtest)  == ["1", "2", None]
     assert prop_or("a", "default", dtest) == "1"
     assert prop_or("c", "default", dtest) == "default"
     assert prop_eq("a", "1", dtest)
     assert not prop_eq("a", "2", dtest)
     assert not prop_eq("c", "1", dtest)
+    assert prop_satisfies("a", lambda p: isinstance(p, str), dtest)
+    assert prop_satisfies("c", is_none, dtest)
+    assert project(["a", "b"], [dtest, dtest]) == [{"a" : "1", "b" : 2}, {"a" : "1", "b" : 2}]
+
+    # Class Instance Functions
     class __attrtest:
         def __init__(self):
             self.a: str = "a"
