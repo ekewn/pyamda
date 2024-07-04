@@ -7,14 +7,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pyamda"
 version = "1.0.0"
-description = "A functional utlity library inspired by Ramda.js"
+description = "The simplest, type-iest functional utils for Python"
 readme = "README.md"
-authors = [{ name = "Ellis Coon", email = "ellis.coon@gmail.com" }]
-license = { file = "LICENSE" }
+authors = [{ name = "ekewn", email = "ellis.coon@gmail.com" }]
+license = { file = "LICENSE", type="GNU GPL"}
 classifiers = [
-    "License :: GNU General Public License",
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python3",
 ]
-keywords = ["functional", "fp", "ramda", "pipeline"]
+keywords = ["functional", "fp", "ramda", "pipeline", "utilities", "utils", "pipeline oriented"]
 dependencies = []
 requires-python = ">=3.12"

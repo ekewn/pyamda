@@ -658,7 +658,7 @@ def prop_satisfies(key: str, p: Predicate[Any], d: Dict[str, Any]) -> bool:
     return p(prop(key, d))
 
 
-def pick(keys: List[str], d: Dict[str, Any]) -> NewDict[str, Any]:
+def pick(keys: List[str], d: Dict[str, Any]) -> Dict[str, Any]:
     """
     Returns partial copies of the given dictionary with only the specified keys.
     Any keys that don't exist in the dictionary will not be included in the copy,
@@ -667,14 +667,14 @@ def pick(keys: List[str], d: Dict[str, Any]) -> NewDict[str, Any]:
     return {k: v for k, v in d.items() if k in keys}
 
 
-def omit(keys: List[str], d: Dict[str, Any]) -> NewDict[str, Any]:
+def omit(keys: List[str], d: Dict[str, Any]) -> Dict[str, Any]:
     """
     Returns partial copies of the given dictionary with the specified keys dropped.
     """
     return {k: v for k, v in d.items() if k not in keys}
 
 
-def project(keys: List[str], ds: List[Dict[str, Any]]) -> List[NewDict[str, Any]]:
+def project(keys: List[str], ds: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Think of this as an SQL select query. Gets the props off of each dict in the list.
     """
@@ -787,6 +787,22 @@ def div_by[a](arg: a) -> FnU[a, a]:
     e.g. div_by(6)(3) == 3 // 6 == 0
     """
     return partial(flip(op.floordiv), arg)
+
+
+def mod[a](arg: a) -> FnU[a, a]:
+    """
+    Curred operator.floordiv. Returns unary function that will perform modulo with this arg as right hand arg.
+    e.g. mod(3)(7) == 7 % 3 == 0
+    """
+    return partial(flip(op.mod), arg)
+
+
+def round_to(num_digits: int ) -> FnU[float, int | float]:
+    """
+    Curred round. Returns unary function that sets the denominator as this arg.
+    e.g. mod(3)(7) == 7 % 3 == 0
+    """
+    return partial(flip(round), num_digits)
 
 
 #
@@ -962,9 +978,11 @@ if __name__ == "__main__":
     assert replace(" ", "|", "replace function test") == "replace|function|test"
 
     # Math Functions
-    assert add(1)(7)      == 1 + 7
-    assert mul(3)(7)      == 3 * 7
-    assert sub_from(7)(3) == 7 - 3
-    assert sub_this(3)(7) == 7 - 3
-    assert div_this(8)(4) == 8 / 4
-    assert div_by(4)(8)   == 8 / 4
+    assert add(1)(7)         == 1 + 7
+    assert mul(3)(7)         == 3 * 7
+    assert sub_from(7)(3)    == 7 - 3
+    assert sub_this(3)(7)    == 7 - 3
+    assert div_this(8)(4)    == 8 / 4
+    assert div_by(4)(8)      == 8 / 4
+    assert mod(3)(7)         == 1
+    assert round_to(1)(3.13) == 3.1
