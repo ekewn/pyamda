@@ -12,7 +12,7 @@ readme = "README.md"
 authors = [{ name = "ekewn", email = "ellis.coon@gmail.com" }]
 license = { file = "LICENSE", type="GNU GPL"}
 classifiers = [
-    "Programming Language :: Python3",
+    "Programming Language :: Python :: 3",
 ]
 keywords = ["functional", "fp", "ramda", "pipeline", "utilities", "utils", "pipeline oriented"]
 dependencies = []
