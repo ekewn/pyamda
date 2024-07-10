@@ -47,6 +47,18 @@ def filter_[a](p: Predicate[a]) -> FnU[Iterable[a], Iterable[a]]:
     return partial(filter, p)
 
 
+def print_[a](msg: str) -> FnU[a, a]:
+    """
+    Like, tap(print)(), but can print an arbitrary message. 
+    Used for printing within a pipe expression. Print the message, and return whatever 
+    value is passed to it.
+    e.g. print_("my message)(1) == print("my message")(1) == 1
+    """
+    def _(msg, x) -> a:
+        print(msg)
+        return x
+    return partial(_, msg)
+
 # Composers
 
 def compose(*funcs: Callable) -> Callable:
@@ -955,7 +967,7 @@ if __name__ == "__main__":
     assert not prop_eq("c", "1", dtest)
     assert prop_satisfies("a", lambda p: isinstance(p, str), dtest)
     assert prop_satisfies("c", is_none, dtest)
-    assert project(["a", "b"], [dtest, dtest]) == [{"a" : "1", "b" : 2}, {"a" : "1", "b" : 2}]
+    assert project(["a", "b"], [dtest, dtest]) == [{"a" : "1", "b" : "2"}, {"a" : "1", "b" : "2"}]
 
     # Class Instance Functions
     class __attrtest:
@@ -986,3 +998,5 @@ if __name__ == "__main__":
     assert div_by(4)(8)      == 8 / 4
     assert mod(3)(7)         == 1
     assert round_to(1)(3.13) == 3.1
+
+    assert print_("All tests passed!")("dog") == ("dog")
