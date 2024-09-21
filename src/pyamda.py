@@ -60,12 +60,14 @@ def print_[a](msg: str) -> FnU[a, a]:
     return partial(_, msg)
 
 
-def asserts[a](p: Predicate[a], x: a) -> a:
+def assert_[a](p: Predicate[a]) -> FnU[a, a]:
     """
     Funcational assert statement. Asserts the predicate holds with the value, then returns the value.
     """
-    assert p(x)
-    return x
+    def _(p, x: a) -> a:
+        assert p(x)
+        return x
+    return partial(_, p)
 
 
 # Composers
@@ -374,7 +376,7 @@ def on_err[a, b](fn: FnU[Exception, b]) -> FnU[Exception | a, b | a]:
 
 # Container-related
 
-def is_a(x: type) -> Predicate:
+def is_a(x: type | object) -> Predicate:
     """
     Wrapper for isinstance check. Returns a predicate.
     """
