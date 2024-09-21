@@ -91,6 +91,20 @@ def pipe(val, *funcs: Callable) -> Any:
     return compose(*funcs)(val)
 
 
+def foreach[a, b](fn: FnU[a, b]) -> FnU[Iterable[a], Iterable[a]]:
+    """
+    Like map but returns the original array. Used for performing side effects.
+    The benefit of returning the original array is that you can reuse your final data
+    to do mulitple side effects.
+    """
+    def _(fn, i: Iterable[a]) -> Iterable[a]:
+        for x in i:
+            fn(x)
+        return i
+    return partial(_, fn)
+
+
+
 # Composition Helpers
 
 def identity[a](x: a) -> a:
