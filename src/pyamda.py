@@ -3,8 +3,9 @@ from collections import deque
 from functools import partial, reduce
 from itertools import (accumulate, count, filterfalse, islice, repeat,
                        tee)
+import types
 from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
-                    Optional, Tuple)
+                    Optional, Tuple, TypeAlias)
 
 #
 #
@@ -21,7 +22,6 @@ type FnT[a, b, c, d]    = Callable[[a, b, c], d]    # Ternary...
 type FnQ[a, b, c, d, e] = Callable[[a, b, c, d], e] # Quaternary...
 type FnUIO[a]           = Callable[[a], IO]
 type Predicate[a]       = FnU[a, bool]
-
 
 #
 #
@@ -58,6 +58,15 @@ def print_[a](msg: str) -> FnU[a, a]:
         print(msg)
         return x
     return partial(_, msg)
+
+
+def asserts[a](p: Predicate[a], x: a) -> a:
+    """
+    Funcational assert statement. Asserts the predicate holds with the value, then returns the value.
+    """
+    assert p(x)
+    return x
+
 
 # Composers
 
@@ -365,12 +374,18 @@ def on_err[a, b](fn: FnU[Exception, b]) -> FnU[Exception | a, b | a]:
 
 # Container-related
 
+def is_a(x: type) -> Predicate:
+    """
+    Wrapper for isinstance check. Returns a predicate.
+    """
+    return partial(isinstance, x)
+
+
 def empty[a: (List, Dict, int, str)](x: a) -> a:
     """
     Returns the empty value (identity) of the monoid.
     e.g. [], {}, "", or 0.
     """
-    is_a = partial(isinstance, x)
     if is_a(List):
         assert isinstance(x, List)
         return []
