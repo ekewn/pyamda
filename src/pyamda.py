@@ -91,13 +91,13 @@ def pipe(val, *funcs: Callable) -> Any:
     return compose(*funcs)(val)
 
 
-def foreach[a, b](fn: FnU[a, b]) -> FnU[Iterable[a], Iterable[a]]:
+def foreach[a](fn: FnU[a, None]) -> FnU[Iterable[a], Iterable[a]]:
     """
     Like map but returns the original array. Used for performing side effects.
     The benefit of returning the original array is that you can reuse your final data
     to do mulitple side effects.
     """
-    def _(fn, i: Iterable[a]) -> Iterable[a]:
+    def _(fn, i) -> Iterable[a]:
         for x in i:
             fn(x)
         return i
@@ -256,9 +256,9 @@ def le(x: Any) -> Predicate[Any]:
 def is_(x: Any) -> Predicate[Any]:
     """
     Curried version of operator.is_.
-    e.g. ( is_(1)(2) ) == ( 1 is 2 ) == False
+    e.g. ( is_(1)(2) ) == ( 2 is 1 ) == False
     """
-    return partial(op.is_, x)
+    return partial(flip(op.is_), x)
 
 
 def is_not(x: Any) -> Predicate[Any]:
@@ -390,30 +390,11 @@ def on_err[a, b](fn: FnU[Exception, b]) -> FnU[Exception | a, b | a]:
 
 # Container-related
 
-def is_a(x: type | object) -> Predicate:
+def is_a[a](x: type) -> Predicate[a]:
     """
     Wrapper for isinstance check. Returns a predicate.
     """
-    return partial(isinstance, x)
-
-
-def empty[a: (List, Dict, int, str)](x: a) -> a:
-    """
-    Returns the empty value (identity) of the monoid.
-    e.g. [], {}, "", or 0.
-    """
-    if is_a(List):
-        assert isinstance(x, List)
-        return []
-    elif is_a(Dict):
-        assert isinstance(x, Dict)
-        return {} 
-    elif is_a(int):
-        assert isinstance(x, int)
-        return 0 
-    else:
-        assert isinstance(x, str)
-        return "" 
+    return partial(flip(isinstance), x)
 
 
 def is_empty[a: (List, Dict, int, str)](x: a) -> bool:
@@ -423,60 +404,33 @@ def is_empty[a: (List, Dict, int, str)](x: a) -> bool:
     return any([x == [], x == {}, x == "", x == 0])
 
 
-def is_none(x: Any) -> bool:
-    """
-    Checks if value is None.
-    """
-    return x is None
+is_none: Predicate[Any] = is_(None)
+is_err: Predicate[Any] = is_a(Exception)
+is_str: Predicate[Any] = is_a(str)
+is_int: Predicate[Any] = is_a(int)
+is_bool: Predicate[Any] = is_a(bool)
+is_dict: Predicate[Any] = is_a(dict)
+is_list: Predicate[Any] = is_a(list)
+is_float: Predicate[Any] = is_a(float)
 
 
-def is_err(x: Any) -> bool:
+def empty[a: (List, Dict, int, str)](x: a) -> a:
     """
-    Checks if value is an Exception.
+    Returns the empty value (identity) of the monoid.
+    e.g. [], {}, "", or 0.
     """
-    return isinstance(x, Exception)
-
-
-def is_str(x: Any) -> bool:
-    """
-    Checks if value is a string.
-    """
-    return isinstance(x, str)
-
-
-def is_int(x: Any) -> bool:
-    """
-    Checks if value is an integer.
-    """
-    return isinstance(x, int)
-
-
-def is_bool(x: Any) -> bool:
-    """
-    Checks if value is a boolean.
-    """
-    return isinstance(x, bool)
-
-
-def is_dict(x: Any) -> bool:
-    """
-    Checks if value is a boolean.
-    """
-    return isinstance(x, dict)
-
-
-def is_list(x: Any) -> bool:
-    """
-    Checks if value is a list.
-    """
-    return isinstance(x, list)
-
-
-def is_float(x: Any) -> bool:
-    """
-    Checks if value is a floating point number.
-    """
-    return isinstance(x, float)
+    if is_list(x):
+        assert isinstance(x, List)
+        return []
+    elif is_dict(x):
+        assert isinstance(x, Dict)
+        return {}
+    elif is_int(x):
+        assert isinstance(x, int)
+        return 0
+    else:
+        assert isinstance(x, str)
+        return ""
 
 
 def err_val(x: Exception, idx: int = 0) -> Any:
@@ -859,10 +813,13 @@ if __name__ == "__main__":
     # Curried Built-ins
     assert list(take(3, map(add(1), count()))) == list(take(3, map_(add(1))(count())))
     assert list(take(3, filter(gt(2), count())))    == list(take(3,filter_(gt(2))(count())))
+    assert_(T)(1)
+
 
     # Composers
     assert compose(len, add(10), sub_this(1))("number should be 28") == len("number should be 28") + 10 - 1
     assert pipe(1, add(1), mul(3))                                == (1 + 1) * 3
+    assert foreach(print)("test") == "test"
 
     # Composition Helpers
     assert identity("test")                        == "test"
