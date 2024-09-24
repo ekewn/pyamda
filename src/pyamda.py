@@ -3,9 +3,8 @@ from collections import deque
 from functools import partial, reduce
 from itertools import (accumulate, count, filterfalse, islice, repeat,
                        tee)
-import types
 from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
-                    Optional, Tuple, TypeAlias)
+                    Optional, Tuple)
 
 #
 #
@@ -29,7 +28,7 @@ type Predicate[a]       = FnU[a, bool]
 #
 #
 
-# Curried Built-ins
+# Built-ins
 
 def map_[a, b](fn: FnU[a, b]) -> FnU[Iterable[a], Iterable[b]]:
     """
@@ -65,9 +64,14 @@ def assert_[a](p: Predicate[a]) -> FnU[a, a]:
     Funcational assert statement. Asserts the predicate holds with the value, then returns the value.
     """
     def _(p, x: a) -> a:
-        assert p(x)
+        assert p(x), f"Asserton failed with predicate {p} and value {x}"
         return x
     return partial(_, p)
+
+
+item = op.itemgetter
+method = op.methodcaller
+p = partial
 
 
 # Composers
@@ -138,6 +142,14 @@ def tap[a](fn: Callable, x: a) -> a:
     e.g. tap(compose(print, add_to(1), print), 2) == print(2), add 1, print(3), return 2
     """
     return compose(fn, identity)(x)
+
+
+def print_arg[a](x: a) -> a:
+    """
+    Prints the argument given to it, then returns the value.
+    Same as partial(tap, print)(x).
+    """
+    return tap(print, x)
 
 
 def const[a](x: a) -> FnU[Any, a]:
