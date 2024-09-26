@@ -141,7 +141,8 @@ def tap[a](fn: Callable, x: a) -> a:
     Calls a function and then returns the argument.
     e.g. tap(compose(print, add_to(1), print), 2) == print(2), add 1, print(3), return 2
     """
-    return compose(fn, identity)(x)
+    fn(x)
+    return x
 
 
 def print_arg[a](x: a) -> a:
@@ -149,7 +150,8 @@ def print_arg[a](x: a) -> a:
     Prints the argument given to it, then returns the value.
     Same as partial(tap, print)(x).
     """
-    return tap(print, x)
+    print(x)
+    return x
 
 
 def const[a](x: a) -> FnU[Any, a]:
@@ -327,6 +329,17 @@ def when[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
     Returns a unary function that only applies the fn param if predicate is true, else returns the arg.
     """
     return if_else(p, fn, identity)
+
+
+def optionally[a, b](fn: FnU[a, b]) -> FnU[Optional[a], Optional[b]]:
+    """
+    Abstracts the common flow of only working on non-none values in if_else blocks.
+    Function will only call if the value is not none, else none will be passed along.
+    """
+    def _(fn: FnU[a, b], v: Optional[a]):
+        if v is not None: return fn(v)
+        else: return v
+    return partial(_, fn)
 
 
 def cond[a, b](if_thens: List[Tuple[Predicate[a], FnU[a, b]]]) -> FnU[a, Optional[b]]:
@@ -836,8 +849,9 @@ if __name__ == "__main__":
     # Composition Helpers
     assert identity("test")                        == "test"
     assert tap(identity, "2")                      == "2"
+    assert print_arg(10) == 10
     assert always("test")()                        == "test"
-    assert tap(add(1), 1)                          == 2
+    assert tap(add(1), 1)                          == 1
     assert const       (1)            ("anything") == 1
     assert const       ("this")       (1)          == "this"
     assert default_to  (10, 11)                    == 11
