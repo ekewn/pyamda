@@ -474,6 +474,16 @@ def contains(x: Container[object]) -> Predicate[object]:
     return partial(op.contains, x)
 
 
+def in_(x: object) -> Predicate[object]:
+    """
+    Curried version of "is in"
+    e.g. ( in_(1)([0, 1, 2]) == ( 1 in [0, 1, 2] ) == True
+    """
+    def _(x, y): return x in y
+    return partial(_, x) 
+
+
+
 # Iterable Generics
 
 def count_of(x: object) -> FnU[Iterable[object], int]:
@@ -893,6 +903,8 @@ if __name__ == "__main__":
     assert not or_(False)(False)
     assert contains([0, 1, 2])(1)
     assert not contains([0, 1, 2])(3)
+    assert in_(1)([0, 1, 2])
+    assert not in_(3)([0, 1, 2])
     assert complement(is_none)(None)             == False
     assert complement(complement(is_none))(None) == True
 
