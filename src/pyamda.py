@@ -2,8 +2,8 @@ import operator as op
 from collections import deque
 from functools import partial, reduce
 from itertools import (accumulate, count, filterfalse, islice, repeat,
-                       tee)
-from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List,
+                       tee, batched)
+from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List, NamedTuple,
                     Optional, Tuple)
 
 #
@@ -22,11 +22,24 @@ type FnQ[a, b, c, d, e] = Callable[[a, b, c, d], e] # Quaternary...
 type FnUIO[a]           = Callable[[a], IO]
 type Predicate[a]       = FnU[a, bool]
 
+class Case[a, b](NamedTuple):
+    name: str
+    input: a
+    expected: Predicate[b]
+
+
 #
 #
 # FUNCTIONS
 #
 #
+
+# Aliases
+
+item = op.itemgetter
+method = op.methodcaller
+p = partial
+
 
 # Built-ins
 
@@ -67,11 +80,6 @@ def assert_[a](p: Predicate[a]) -> FnU[a, a]:
         assert p(x), f"Asserton failed with predicate {p} and value {x}"
         return x
     return partial(_, p)
-
-
-item = op.itemgetter
-method = op.methodcaller
-p = partial
 
 
 # Composers
@@ -413,6 +421,16 @@ def on_err[a, b](fn: FnU[Exception, b]) -> FnU[Exception | a, b | a]:
     return partial(_, fn)
 
 
+def test[a, b](fn: FnU[a, b], cases: Iterable[Case[a, b]]) -> None:
+    """
+    Similar to apply_spec, where we apply the function to each "input" of the case and map the value to the output.
+    Assert every application of the funtion to an input results in the expected output.
+    """
+    for case in cases:
+        assert case.expected(fn(case.input)), f"{fn.__name__} - {case.name} - Expected {case.expected} but got {fn(case.input)}."
+
+
+
 # Container-related
 
 def is_a[a](x: type) -> Predicate[a]:
@@ -437,6 +455,15 @@ is_bool: Predicate[Any] = is_a(bool)
 is_dict: Predicate[Any] = is_a(dict)
 is_list: Predicate[Any] = is_a(list)
 is_float: Predicate[Any] = is_a(float)
+
+
+def is_namedtuple(x: object) -> bool:
+    """
+    Not allowed to do isinstance checks on namedtuple, so this will generally
+    provide the correct answer. It is possible to get a falsed positive if someone
+    is really trying, but it will work in most conditions.
+    """
+    return isinstance(x, tuple) and hasattr(x, '_asdict') and hasattr(x, '_fields')
 
 
 def empty[a: (List, Dict, int, str)](x: a) -> a:
@@ -600,13 +627,14 @@ def cons[a](val: a | List[a], l: List[a]) -> NewList[a]:
     return l2
 
 
-def pluck(name_idx: int | str, l: List) -> NewList:
+def pluck[a](name_idx: int | str, l: List[a]) -> NewList[a]:
     """
     Returns a copy of the list by plucking a property (if given a property name) or an item (if given an index)
     off of each object/item in the list.
     """
     l2 = l.copy()
-    return list(map(op.itemgetter(name_idx), l2))
+    def _(x, y): return op.attrgetter(y)(x) if is_namedtuple(x) else op.itemgetter(y)(x)
+    return [_(x, name_idx) for x in l2]
 
 
 def remove[a](first: int, last: int, l: List[a]) -> NewList[a]:
@@ -711,6 +739,13 @@ def project(keys: List[str], ds: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     Think of this as an SQL select query. Gets the props off of each dict in the list.
     """
     return list(map(partial(pick, keys), ds))
+
+
+def apply_spec[a, b](fn: FnU, spec: Dict[str, a]) -> Dict[str, b]: #type: ignore - b only shows up once in signature
+    """
+    Applies the provided function to each value in the provided dictionary.
+    """
+    return {k: fn(v) for k, v in spec}
 
 
 # Class Instance Functions
@@ -834,7 +869,7 @@ def round_to(num_digits: int ) -> FnU[float, int | float]:
     Curred round. Returns unary function that sets the denominator as this arg.
     e.g. mod(3)(7) == 7 % 3 == 0
     """
-    return partial(flip(round), num_digits)
+    return partial(flip(round), num_digits) #type: ignore
 
 
 #
@@ -915,12 +950,12 @@ if __name__ == "__main__":
     assert unless      (F, add   (1))        (1)                   == 2
     assert when        (T, add   (1))        (1)                   == 2
     assert when        (F, add   (1))        (1)                   == 1
-    condtest: FnU[int, str]                                        =  default_with("otherwise", cond([(gt(0), const("is positive"))
+    __condtest: FnU[int, str]                                        =  default_with("otherwise", cond([(gt(0), const("is positive"))
                                                                                                     , (eq(0), const("is zero"))
                                                                                                     , (lt(0), const("is negative"))]))
-    assert condtest(1)                                    == "is positive"
-    assert condtest(0)                                    == "is zero"
-    assert condtest(-1)                                   == "is negative"
+    assert __condtest(1)                                    == "is positive"
+    assert __condtest(0)                                    == "is zero"
+    assert __condtest(-1)                                   == "is negative"
     assert is_err(try_except(div_by(0), lambda v, e: Exception(f"arg: {v} caused err {e}"))(1))
     assert is_err(try_(div_by(0))(1))
     assert optional(div_by(0))(1) is None
@@ -958,9 +993,9 @@ if __name__ == "__main__":
     assert list(take(3, drop(2, count())))   == [2, 3, 4]
     assert head(count())                     == 0
     assert list(take(3, tail(count())))      == [1, 2, 3]
-    partitiontest1, partitiontest2           =  partition(gt(3), take(6, count()))
-    assert list(partitiontest1)              == [4, 5]
-    assert list(partitiontest2)              == [0, 1, 2, 3]
+    _partitiontest1, _partitiontest2           =  partition(gt(3), take(6, count()))
+    assert list(_partitiontest1)              == [4, 5]
+    assert list(_partitiontest2)              == [0, 1, 2, 3]
 
     # List Functions
     assert adjust(2, add(3), [0, 1, 2, 3])  == [0, 1, 5, 3]
@@ -980,36 +1015,36 @@ if __name__ == "__main__":
     assert without([0, 1], [0, 2, 3, 1])    == [2, 3]
 
     # Dictionary Functions
-    dtest: Dict[str, str]                 =  {"a": "1", "b": "2", "z" : "3"}
-    assert get(dtest, "default", "a")     == "1"
-    assert get(dtest, "default", "c")     == "default"
-    assert prop("a", dtest)               == "1"
-    assert prop("c", dtest)               == None
-    assert props(["a", "b", "c"], dtest)  == ["1", "2", None]
-    assert prop_or("a", "default", dtest) == "1"
-    assert prop_or("c", "default", dtest) == "default"
-    assert prop_eq("a", "1", dtest)
-    assert not prop_eq("a", "2", dtest)
-    assert not prop_eq("c", "1", dtest)
-    assert prop_satisfies("a", lambda p: isinstance(p, str), dtest)
-    assert prop_satisfies("c", is_none, dtest)
-    assert project(["a", "b"], [dtest, dtest]) == [{"a" : "1", "b" : "2"}, {"a" : "1", "b" : "2"}]
+    _dtest: Dict[str, str]                 =  {"a": "1", "b": "2", "z" : "3"}
+    assert get(_dtest, "default", "a")     == "1"
+    assert get(_dtest, "default", "c")     == "default"
+    assert prop("a", _dtest)               == "1"
+    assert prop("c", _dtest)               == None
+    assert props(["a", "b", "c"], _dtest)  == ["1", "2", None]
+    assert prop_or("a", "default", _dtest) == "1"
+    assert prop_or("c", "default", _dtest) == "default"
+    assert prop_eq("a", "1", _dtest)
+    assert not prop_eq("a", "2", _dtest)
+    assert not prop_eq("c", "1", _dtest)
+    assert prop_satisfies("a", lambda p: isinstance(p, str), _dtest)
+    assert prop_satisfies("c", is_none, _dtest)
+    assert project(["a", "b"], [_dtest, _dtest]) == [{"a" : "1", "b" : "2"}, {"a" : "1", "b" : "2"}]
 
     # Class Instance Functions
     class __attrtest:
         def __init__(self):
             self.a: str = "a"
             self.one: int = 1
-    attrtest = __attrtest()
-    assert attr("a")(attrtest)               == "a"
-    assert attr("one")(attrtest)             == 1
-    assert attr("c")(attrtest)               == None
-    assert attr_or("a", "default")(attrtest) == "a"
-    assert attr_or("c", "default")(attrtest) == "default"
-    assert attr_eq("a", "a")(attrtest)
-    assert attr_eq("one", 1)(attrtest)
-    assert not attr_eq("a", "2")(attrtest)
-    assert not attr_eq("c", "1")(attrtest)
+    _attrtest = __attrtest()
+    assert attr("a")(_attrtest)               == "a"
+    assert attr("one")(_attrtest)             == 1
+    assert attr("c")(_attrtest)               == None
+    assert attr_or("a", "default")(_attrtest) == "a"
+    assert attr_or("c", "default")(_attrtest) == "default"
+    assert attr_eq("a", "a")(_attrtest)
+    assert attr_eq("one", 1)(_attrtest)
+    assert not attr_eq("a", "2")(_attrtest)
+    assert not attr_eq("c", "1")(_attrtest)
 
     # String Functions
     assert split(" ", "split function test")          == ["split", "function", "test"]
