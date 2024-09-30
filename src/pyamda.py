@@ -2,7 +2,7 @@ import operator as op
 from collections import deque
 from functools import partial, reduce
 from itertools import (accumulate, count, filterfalse, islice, repeat,
-                       tee, batched)
+                       tee)
 from typing import (Any, Callable, Container, Dict, Iterable, Iterator, List, NamedTuple,
                     Optional, Tuple)
 
@@ -627,7 +627,7 @@ def cons[a](val: a | List[a], l: List[a]) -> NewList[a]:
     return l2
 
 
-def pluck[a](name_idx: int | str, l: List[a]) -> NewList[a]:
+def pluck(name_idx: int | str, l: List) -> NewList:
     """
     Returns a copy of the list by plucking a property (if given a property name) or an item (if given an index)
     off of each object/item in the list.
