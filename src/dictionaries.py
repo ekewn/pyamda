@@ -19,12 +19,16 @@ def get[a, b](key: a) -> FnU[Dict[a,b], Optional[b]]:
 def prop(key: str) -> FnU[Dict[str, Any], Optional[Any]]:
     """
     Returns a function that recursively checks the object to return the value at the key, if present, else None.
+
+    >>> assert(prop("a")({"a": 1}) == 1)
+    >>> assert(prop("a")({"b": {"a": 1}) == 1)
+    >>> assert(prop("a")({"b": {"c": 1}) == None)
     """
     def _(key, d) -> Optional[Any]:
         if key in d:
             return d[key]
         else:
-            for v in list(filter(is_dict, d.values())):
+            for v in list(filter(lambda x: isinstance(x, dict), d.values())):
                 return D.prop(key)(v) #type: ignore
     return p(_, key)
 
