@@ -35,7 +35,7 @@ class Case[a, b](NamedTuple):
 #
 #
 
-# Aliases
+# Frequently Used Aliases
 
 item = op.itemgetter
 method = op.methodcaller
@@ -61,7 +61,7 @@ def filter_[a](p: Predicate[a]) -> FnU[Iterable[a], Iterable[a]]:
     Curried filter.
 
     >>> i = [0, 1, 2]
-    >>> p = lambda x: x == 1
+    >>> p = lambda x: x != 1
     >>> assert list(filter_(p)(i)) == list(filter(p, i)) == [0, 2]
     """
     return partial(filter, p)
@@ -100,10 +100,14 @@ def assert_[a](p: Predicate[a]) -> FnU[a, a]:
 def compose(*funcs: Callable) -> Callable:
     """
     Composes functions from left to right.
-    e.g compose(add_to(1), mul_by(2))(3) == (3 + 1) * 2 == 8
+
+    >>> fn1 = lambda x : x + 1
+    >>> fn2 = lambda x : x * 2
+    >>> composed = compose(fn1, fn2)
+    >>> assert composed(2) == fn2(fn1(2)) == 6
     """
 
-    def compose2[a, b, c](x: Callable[[a], b], y: Callable[[b], c]) -> Callable[[a], c]:
+    def compose2[a, b, c](x: FnU[a, b], y: FnU[b, c]) -> FnU[a, c]:
         return lambda val: y(x(val))
 
     return reduce(compose2, funcs)
@@ -111,8 +115,11 @@ def compose(*funcs: Callable) -> Callable:
 
 def pipe(val, *funcs: Callable) -> Any:
     """
-    Applies the functions to the value from left to right.
-    e.g. pipe(3, add_to(1), mul_by(2)) == (3 + 1) * 2 == 8
+    Applies the functions to the value from left to right on the value provided.
+
+    >>> fn1 = lambda x : x + 1
+    >>> fn2 = lambda x : x * 2
+    >>> assert pipe(2, fn1, fn2) == fn2(fn1(2)) == 6
     """
     return compose(*funcs)(val)
 
@@ -135,15 +142,19 @@ def foreach[a](fn: FnU[a, None]) -> FnU[Iterable[a], Iterable[a]]:
 def identity[a](x: a) -> a:
     """
     The identity property. Returns the argument.
-    e.g. id(1) == 1
+
+    >>> assert identity(2) == 2
+    >>> assert identity("dog") == "dog"
     """
     return x
 
 
 def always[a](x: a) -> FnN[a]:
     """
-    Returns a function that always returns the arg.
-    e.g. always(10)() == 10
+    Returns a nullary function that always returns the arg.
+
+    >>> assert always(2)() == 2
+    >>> assert always("dog")() == "dog"
     """
     return partial(identity, x)
 
@@ -151,7 +162,10 @@ def always[a](x: a) -> FnN[a]:
 def flip[a, b, c](fn: FnB[a, b, c]) -> FnB[b, a, c]:
     """
     Returns a binary function with the argument order flipped.
-    e.g. flip(a -> b -> c) == b -> a -> c
+
+    >>> divide_x_by_y = lambda x, y : x // y
+    >>> divide_y_by_x = lambda x, y : y // x
+    >>> assert divide_x_by_y(10, 2) == flip(divide_y_by_x)(10, 2) == 5
     """
 
     def _(x: b, y: a):
@@ -163,7 +177,9 @@ def flip[a, b, c](fn: FnB[a, b, c]) -> FnB[b, a, c]:
 def tap[a](fn: Callable, x: a) -> a:
     """
     Calls a function and then returns the argument.
-    e.g. tap(compose(print, add_to(1), print), 2) == print(2), add 1, print(3), return 2
+
+    >>> fn = lambda x : x + 1
+    >>> assert tap(fn, 10) == 10
     """
     fn(x)
     return x
@@ -181,8 +197,10 @@ def print_arg[a](x: a) -> a:
 def const[a](x: a) -> FnU[Any, a]:
     """
     Returns a unary function that always returns the argument to const, and ignores the arg to the resulting function.
-    e.g. c = const(1)
-    c("literally any arg") == 1
+
+    >>> c = const("c")
+    >>> assert c("literally any arg") == "c"
+    >>> assert c(None) == "c"
     """
 
     def _(val, *args):
@@ -194,27 +212,33 @@ def const[a](x: a) -> FnU[Any, a]:
 def none(*args) -> None:
     """
     A function that always returns None.
-    e.g. none() == None
+
+    >>> assert none() is None
+    >>> assert none("dog") is None
+
     """
     return None
 
 
-def default_to[a](default: a, val: a) -> a:
+def default_to[a](default: a, val: Optional[a]) -> a:
     """
     Returns default value if val is None.
-    e.g.
-    default_to("a", None)(None) == "a"
-    default_to("a", None)("literally any arg") == "literally any arg"
 
+    >>> assert default_to("a", None) == "a"
+    >>> assert default_to("a", "c") == "c"
     """
     return default if val is None else val
 
 
 def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
     """
-    Returns a function that replaces the None case of the given function with the default value.
-    e.g.
-    func_with_defaulting = default_with("my default value", func_that_could_return_none)
+    Returns a function that returns the default if the function call results in None.
+
+    >>> fn = lambda x : x + 1 if x != 2 else None
+    >>> fn_with_def = default_with(100, fn)
+    >>> assert fn_with_def(1) == 2
+    >>> assert fn_with_def(2) == 100
+    >>> assert fn_with_def(3) == 4
     """
 
     def _(d, f, v):
@@ -230,7 +254,16 @@ def if_else[
     a, b, c
 ](p: Predicate[a], if_true: FnU[a, b], if_false: FnU[a, c]) -> FnU[a, b | c]:
     """
-    Functional ternary operator.
+    Functional ternary operator. Allows for branching within a single pipeline.
+
+    >>> is_positive = lambda x : x > 0
+    >>> true_fn = lambda x : x + 1
+    >>> false_fn = lambda x : x - 1
+    >>> new_func = if_else(is_positive, true_fn, false_fn)
+    >>> assert is_positive(1)
+    >>> assert new_func(1) == true_fn(1) == 2
+    >>> assert not is_positive(0)
+    >>> assert new_func(0) == false_fn(0) == -1
     """
 
     def _(p, t, f, v):
@@ -242,6 +275,14 @@ def if_else[
 def unless[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
     """
     Returns a unary function that only applies the fn param if predicate is false, else returns the arg.
+
+    >>> is_positive = lambda x : x > 0
+    >>> fn = lambda x : x + 1
+    >>> add_one_if_not_positive = unless(is_positive, fn)
+    >>> assert is_positive(1)
+    >>> assert add_one_if_not_positive(1) == 1
+    >>> assert not is_positive(0)
+    >>> assert add_one_if_not_positive(0) == fn(0) == 1
     """
     return if_else(p, identity, fn)
 
@@ -249,6 +290,14 @@ def unless[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
 def when[a, b](p: Predicate[a], fn: FnU[a, b]) -> FnU[a, a | b]:
     """
     Returns a unary function that only applies the fn param if predicate is true, else returns the arg.
+
+    >>> is_positive = lambda x : x > 0
+    >>> fn = lambda x : x + 1
+    >>> add_one_if_positive = when(is_positive, fn)
+    >>> assert is_positive(1)
+    >>> assert add_one_if_positive(1) == fn(1) == 2
+    >>> assert not is_positive(0)
+    >>> assert add_one_if_positive(0) == 0
     """
     return if_else(p, fn, identity)
 
@@ -257,6 +306,11 @@ def optionally[a, b](fn: FnU[a, b]) -> FnU[Optional[a], Optional[b]]:
     """
     Abstracts the common flow of only working on non-none values in if_else blocks.
     Function will only call if the value is not none, else none will be passed along.
+
+    >>> fn = lambda x : x + 1
+    >>> add_one_if_not_None = optionally(fn)
+    >>> assert add_one_if_not_None(1) == 2
+    >>> assert add_one_if_not_None(None) == None
     """
 
     def _(fn: FnU[a, b], v: Optional[a]):
@@ -271,6 +325,18 @@ def optionally[a, b](fn: FnU[a, b]) -> FnU[Optional[a], Optional[b]]:
 def cond[a, b](if_thens: List[Tuple[Predicate[a], FnU[a, b]]]) -> FnU[a, Optional[b]]:
     """
     Returns a unary function that applies the first function whose predicate is satisfied.
+    If no conditions are satisfied, None is returned.
+
+    >>> is_positive = lambda x : x > 0
+    >>> is_negative = lambda x : x < 0
+    >>> is_zero = lambda x : x == 0
+    >>> add_one = lambda x : x + 1
+    >>> sub_one = lambda x : x - 1
+    >>> do_nothing = lambda x : x
+    >>> fn = cond([(is_positive, add_one), (is_zero, do_nothing), (is_negative, sub_one)])
+    >>> assert fn(1) == 2
+    >>> assert fn(0) == 0
+    >>> assert fn(-1) == -2
     """
 
     def _(its: List[Tuple[Predicate[a], FnU[a, b]]], arg: a):
@@ -281,26 +347,13 @@ def cond[a, b](if_thens: List[Tuple[Predicate[a], FnU[a, b]]]) -> FnU[a, Optiona
     return partial(_, if_thens)
 
 
-def try_except[
-    a, b
-](tryer: FnU[a, b], excepter: FnB[a, Exception, Exception]) -> FnU[a, b | Exception]:
-    """
-    Guards a formula that might throw an error. Will catch and run the provided excepter formula.
-    """
-
-    def _(t, e, v):
-        try:
-            return t(v)
-        except Exception as err:
-            return e(v, err)
-
-    return partial(_, tryer, excepter)
-
-
 def try_[a, b](tryer: FnU[a, b]) -> FnU[a, b | Exception]:
     """
     Guards a formula that might throw an error. If an exception is encountered, the exception will be returned
     with the arg nested in the exception i.e. you can retrieve it by doing err_val(Exception).
+
+    Generally you can either avoid by doing calls to on_success, or on_err, allow things to crash by using raise_
+    or inspect the error with err_val.
     """
 
     def _(t, v):
@@ -319,18 +372,12 @@ def raise_(e: Exception) -> Exception:
     raise e
 
 
-def optional[a, b](tryer: FnU[a, b]) -> FnU[a, Optional[b]]:
+def err_val(x: Exception, idx: int = 0) -> Any:
     """
-    Guards a formula that might throw an error. Will return the None an exception occurs.
+    Gets the value/text out of an exception.
+    Note: Exceptions aren't parameterize-able so we can't determine the type of value we get out of it.
     """
-
-    def _(t, v):
-        try:
-            return t(v)
-        except:
-            return None
-
-    return partial(_, tryer)
+    return x.args[idx]
 
 
 def on_success[a, b](fn: FnU[a, b]) -> FnU[a | Exception, b | Exception]:
@@ -363,23 +410,19 @@ def on_err[a, b](fn: FnU[Exception, b]) -> FnU[Exception | a, b | a]:
     return partial(_, fn)
 
 
-def test[a, b](fn: FnU[a, b], cases: Iterable[Case[a, b]]) -> None:
-    """
-    Similar to apply_spec, where we apply the function to each "input" of the case and map the value to the output.
-    Assert every application of the funtion to an input results in the expected output.
-    """
-    for case in cases:
-        assert case.expected(
-            fn(case.input)
-        ), f"{fn.__name__} - {case.name} - Expected {case.expected} but got {fn(case.input)}."
-
-
 # Container-related
 
 
 def is_a[a](x: type) -> Predicate[a]:
     """
     Wrapper for isinstance check. Returns a predicate.
+
+    >>> is_int = is_a(int)
+    >>> is_str = is_a(str)
+    >>> assert is_int(1)
+    >>> assert not is_int("dog")
+    >>> assert is_str("dog")
+    >>> assert not is_str(1)
     """
     return partial(flip(isinstance), x)
 
@@ -387,6 +430,11 @@ def is_a[a](x: type) -> Predicate[a]:
 def is_empty[a: (List, Dict, int, str)](x: a) -> bool:
     """
     Checks if value is the identity value of the monoid.
+
+    >>> assert is_empty("")
+    >>> assert is_empty([])
+    >>> assert is_empty({})
+    >>> assert is_empty(0)
     """
     return any([x == [], x == {}, x == "", x == 0])
 
@@ -403,8 +451,8 @@ is_float: Predicate[Any] = is_a(float)
 
 def is_namedtuple(x: object) -> bool:
     """
-    Not allowed to do isinstance checks on namedtuple, so this will generally
-    provide the correct answer. It is possible to get a falsed positive if someone
+    Not allowed to do isinstance checks on namedtuple. This is a workaround that will generally
+    provide the correct answer. It is possible to get a false positive if someone
     is really trying, but it will work in most conditions.
     """
     return isinstance(x, tuple) and hasattr(x, "_asdict") and hasattr(x, "_fields")
@@ -413,7 +461,11 @@ def is_namedtuple(x: object) -> bool:
 def empty[a: (List, Dict, int, str)](x: a) -> a:
     """
     Returns the empty value (identity) of the monoid.
-    e.g. [], {}, "", or 0.
+
+    >>> assert empty(["a", "list"]) == []
+    >>> assert empty({"a": "dict"}) == {}
+    >>> assert empty(100) == 0
+    >>> assert empty("a string") == ""
     """
     if is_list(x):
         assert isinstance(x, List)
@@ -429,29 +481,32 @@ def empty[a: (List, Dict, int, str)](x: a) -> a:
         return ""
 
 
-def err_val(x: Exception, idx: int = 0) -> Any:
+def contains(x: object) -> Predicate[object]:
     """
-    Gets the value/text out of an exception.
-    Note: Exceptions aren't parameterize-able so we can't determine the type of value we get out of it.
-    """
-    return x.args[idx]
+    Curried version of "is in".
+    Returns a function that tells you if the item is in a container.
+    See also in_, which can be easily confused.
 
-
-def contains(x: Container[object]) -> Predicate[object]:
-    """
-    Curried version of operator.contains
-    e.g. ( contains([0, 1, 2])(1) == ( 1 in [0, 1, 2] ) == True
-    """
-    return partial(op.contains, x)
-
-
-def in_(x: object) -> Predicate[object]:
-    """
-    Curried version of "is in"
-    e.g. ( in_(1)([0, 1, 2]) == ( 1 in [0, 1, 2] ) == True
+    >>> has_one = contains(1)
+    >>> assert has_one([0, 1, 2])
+    >>> assert not has_one([0, 2])
     """
 
     def _(x, y):
         return x in y
 
     return partial(_, x)
+
+
+def in_(x: Container[object]) -> Predicate[object]:
+    """
+    Curried version of operator.contains.
+    Returns a function that lets you know if the given value is within the initial Container.
+    See also contains, which can be easily confused.
+
+    >>> container = [0, 1, 2]
+    >>> is_in_container = in_(container)
+    >>> assert is_in_container(1)
+    >>> assert not is_in_container(100)
+    """
+    return partial(op.contains, x)
