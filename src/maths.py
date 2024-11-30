@@ -72,7 +72,7 @@ def mod[a](arg: a) -> FnU[a, a]:
     Curred operator.floordiv. Returns unary function that will perform modulo with this arg as right hand arg.
 
     >>> assert mod(3)(7) == 7 % 3 == 1
-    >>> assert mod(7)(3) == 3 % 7 == 0
+    >>> assert mod(7)(3) == 3 % 7 == 3
     """
     return partial(flip(op.mod), arg)
 
@@ -83,6 +83,6 @@ def round_to(num_digits: int) -> FnU[float, int | float]:
 
     >>> round_to_2 = round_to(2)
     >>> assert round_to_2(1.001) == 1.00
-    >>> assert round_to_2(1.005) == 1.01
+    >>> assert round_to_2(1.006) == 1.01
     """
     return partial(flip(round), num_digits)  # type: ignore

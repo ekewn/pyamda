@@ -1,101 +1,96 @@
-from itertools import filterfalse
-from typing import List
+from typing import List, Dict, NamedTuple
 
-from core import FnU, in_, op, is_namedtuple
-
-
-type NewList[a] = List[a]
+from core import FnU, Predicate, op, is_namedtuple, partial
 
 
-def adjust[a](idx: int, fn: FnU[a, a], l: List[a]) -> NewList[a]:
-    """
-    Returns a copy of the list with the element at the index transformed by the given function.
-    """
-    l2 = l.copy()
-    l2[idx] = fn(l2[idx])
-    return l2
-
-
-def move[a](idx_from: int, idx_to: int, l: List[a]) -> NewList[a]:
-    """
-    Returns a copy of the list with the the item at the specified index moved to the new index.
-    """
-    l2 = l.copy()
-    l2.insert(idx_to, l2.pop(idx_from))
-    return l2
-
-
-def swap[a](idx1: int, idx2: int, l: List[a]) -> NewList[a]:
-    """
-    Returns a copy of the list Swaps the items at the specified indices.
-    """
-    l2 = l.copy()
-    v1, v2 = l[idx1], l[idx2]
-    l2[idx1], l2[idx2] = v2, v1
-    return l2
-
-
-def update[a](idx: int, val: a, l: List[a]) -> NewList[a]:
-    """
-    Returns a copy of the list with the item at the specified index updated.
-    """
-    l2 = l.copy()
-    l2[idx] = val
-    return l2
-
-
-def cons[a](val: a | List[a], l: List[a]) -> NewList[a]:
+def cons[a](val: a | List[a]) -> FnU[List[a], List[a]]:
     """
     Returns a copy of the list with the value/other list prepended.
+
+    >>> l = [1, 2]
+    >>> assert cons(0)(l) == [0, 1, 2]
+    >>> assert cons([-1, 0])(l) == [-1, 0, 1, 2]
+
     """
-    l2 = l.copy()
-    if isinstance(val, List):
-        assert isinstance(val, List)
-        l2 = val + l2
-    else:
-        l2.insert(0, val)
-    return l2
+
+    def _(v: a | List[a], l: List[a]) -> List[a]:
+        if isinstance(v, List):
+            assert isinstance(v, List)
+            return v + l
+        else:
+            l2 = l.copy()
+            l2.insert(0, v)
+            return l2
+
+    return partial(_, val)
 
 
-def pluck(name_idx: int | str, l: List) -> NewList:
+def pluck[a: List, Dict, object](name_idx: int | str) -> FnU[List[a], List[a]]:
     """
     Returns a copy of the list by plucking a property (if given a property name) or an item (if given an index)
     off of each object/item in the list.
+
+    >>> ldict = [{"a" : "firsta", "b": "firstb"}, {"a": "seconda", "b": "secondb"}]
+    >>> llist = [["l1first", "l1second"], ["l2first", "l2second"]]
+    >>> nt = NamedTuple("nt", [("a", str), ("b", str)])
+    >>> lnt = [nt("nt1a", "nt1b"), nt("nt2a", "nt2b")]
+    >>> assert pluck("a")(ldict) == ["firsta", "seconda"]
+    >>> assert pluck(0)(llist) == ["l1first", "l2first"]
+    >>> assert pluck("a")(lnt) == ["nt1a", "nt2a"]
     """
-    l2 = l.copy()
 
-    def _(x, y):
-        return op.attrgetter(y)(x) if is_namedtuple(x) else op.itemgetter(y)(x)
+    def _(x: int | str, l: List[a]) -> List[a]:
+        y = l[0]
+        if isinstance(x, str) and (
+            is_namedtuple(y) and not isinstance(y, dict) and not isinstance(y, list)
+        ):
+            assert isinstance(x, str)
+            return [op.attrgetter(x)(_) for _ in l]
+        else:
+            return [op.itemgetter(x)(_) for _ in l]
 
-    return [_(x, name_idx) for x in l2]
-
-
-def remove[a](first: int, last: int, l: List[a]) -> NewList[a]:
-    """
-    Returns a copy of the list with all items from first to last indices given (not including the value at the last index) removed.
-    """
-    l2 = l.copy()
-    del l2[first:last]
-    return l2
+    return partial(_, name_idx)
 
 
-def without[a](items_to_remove: List[a], l: List[a]) -> List[a]:
+def without[a](items_to_remove: List[a]) -> FnU[List[a], List[a]]:
     """
     Returns a copy of the list with all the items from the first list (items to remove) taken out of the given list.
+
+    >>> l = [0, 1, 2, 3, 4, 5]
+    >>> assert without([0, 2])(l) == [1, 3, 4, 5]
     """
-    l2 = l.copy()
-    return list(filterfalse(in_(items_to_remove), l2))
+
+    def _(n: List[a], l: List[a]) -> List[a]:
+        return [x for x in l if x not in n]
+
+    return partial(_, items_to_remove)
 
 
-def startswith[a](val: a, l: List[a]) -> bool:
+def startswith[a](val: a) -> Predicate[List[a]]:
     """
-    Does the list start with the given value?
+    Returns a function that determines if the given list beings with the value given.
+
+    >>> l = [0, 1, 2, 3]
+    >>> assert startswith(0)(l)
+    >>> assert not startswith(1)(l)
     """
-    return l[0] == val
+
+    def _(v: a, l: List[a]) -> bool:
+        return l[0] == v
+
+    return partial(_, val)
 
 
-def endswith[a](val: a, l: List[a]) -> bool:
+def endswith[a](val: a) -> Predicate[List[a]]:
     """
     Does the list end with the given value?
+
+    >>> l = [0, 1, 2, 3]
+    >>> assert endswith(3)(l)
+    >>> assert not endswith(2)(l)
     """
-    return l[len(l) - 1] == val
+
+    def _(v: a, l: List[a]) -> bool:
+        return l[-1] == v
+
+    return partial(_, val)
