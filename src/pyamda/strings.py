@@ -8,7 +8,7 @@ def replace(old: str, new: str) -> FnU[str, str]:
     """
     Curried, pure s.replace().
 
-    >>> assert replace("x", "y")("x") == "x".replace("x", "y") == "y"
+    >>> assert replace("x", "x")("x") == "x".replace("x", "y") == "y"
     """
     return method("replace", old, new)
 
