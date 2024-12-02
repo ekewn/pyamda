@@ -2,7 +2,7 @@ from functools import partial as p
 from typing import Dict, Optional, Any, List
 from operator import methodcaller as method
 
-from core import FnU, default_with
+from .core import FnU, default_with
 
 
 def get[a, b](key: a) -> FnU[Dict[a, b], Optional[b]]:

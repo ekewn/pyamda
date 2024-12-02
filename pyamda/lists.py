@@ -1,6 +1,6 @@
 from typing import List, Dict, NamedTuple
 
-from core import FnU, Predicate, op, is_namedtuple, partial
+from .core import FnU, Predicate, op, is_namedtuple, partial
 
 
 def cons[a](val: a | List[a]) -> FnU[List[a], List[a]]:

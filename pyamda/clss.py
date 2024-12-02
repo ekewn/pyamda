@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from core import op, partial, FnU
+from .core import op, partial, FnU
 
 
 def attr(name: str) -> FnU[object, Optional[Any]]:

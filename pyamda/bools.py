@@ -1,6 +1,6 @@
 from typing import Any
 
-from core import Predicate, partial, op, flip
+from .core import Predicate, partial, op, flip
 
 
 def T(*args) -> bool:
