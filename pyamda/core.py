@@ -94,6 +94,17 @@ def assert_[a](p: Predicate[a]) -> FnU[a, a]:
     return partial(_, p)
 
 
+def while_[a](p: Predicate[a], fn: FnU[a, a], seed: a) -> a:
+    """
+    Functional equivalent to a while loop.
+
+    >>> assert while_(lambda x: x < 10, lambda x: x + 1, 0) == 10
+    """
+    while p(seed):
+        return while_(p, fn, fn(seed))
+    return seed
+
+
 # Composition Pipeline Essentials
 
 
