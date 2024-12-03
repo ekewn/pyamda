@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, Iterable
 
-from .core import Predicate, partial, op, flip
+from pyamda.core import Predicate, partial, op, flip
 
 
 def T(*args) -> bool:
@@ -156,5 +156,39 @@ def complement[a](p: Predicate[a]) -> Predicate[a]:
 
     def _(pred, val):
         return not pred(val)
+
+    return partial(_, p)
+
+
+def all_[a](p: Predicate[a]) -> Predicate[Iterable[a]]:
+    """
+    Returns a predicate that checks to see if the initial predicate holds for all items in the iterable.
+
+    >>> l = [1, 2, 3]
+    >>> p1 = lambda x : x > 0
+    >>> p2 = lambda x : x > 1
+    >>> assert all_(p1)(l)
+    >>> assert not all_(p2)(l)
+    """
+
+    def _(pred, it):
+        return all(map(pred, it))
+
+    return partial(_, p)
+
+
+def any_[a](p: Predicate[a]) -> Predicate[Iterable[a]]:
+    """
+    Returns a predicate that checks to see if the initial predicate holds for any items in the iterable.
+
+    >>> l = [1, 2, 3]
+    >>> p1 = lambda x : x > 2
+    >>> p2 = lambda x : x > 3
+    >>> assert any_(p1)(l)
+    >>> assert not any_(p2)(l)
+    """
+
+    def _(pred, it):
+        return any(map(pred, it))
 
     return partial(_, p)

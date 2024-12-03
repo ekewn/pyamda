@@ -1,7 +1,7 @@
 from typing import List
 from operator import methodcaller as method
 
-from .core import FnU
+from pyamda.core import FnU
 
 
 def replace(old: str, new: str) -> FnU[str, str]:

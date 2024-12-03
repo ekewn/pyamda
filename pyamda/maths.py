@@ -1,4 +1,4 @@
-from .core import FnU, op, partial, flip
+from pyamda.core import FnU, op, partial, flip
 
 
 def add[a](arg: a) -> FnU[a, a]:

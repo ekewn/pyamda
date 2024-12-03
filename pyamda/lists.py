@@ -1,6 +1,7 @@
 from typing import List, Dict, NamedTuple
 
-from .core import FnU, Predicate, op, is_namedtuple, partial
+
+from pyamda.core import FnU, Predicate, op, is_namedtuple, partial
 
 
 def cons[a](val: a | List[a]) -> FnU[List[a], List[a]]:
@@ -94,3 +95,37 @@ def endswith[a](val: a) -> Predicate[List[a]]:
         return l[-1] == v
 
     return partial(_, val)
+
+
+def pairs[a](l: list[a]) -> list[tuple[a, a]]:
+    """
+    Pairs up each element in the list.
+
+    >>> l = [0, 1, 2, 3]
+    >>> assert pairs(l) == [(0,1), (1,2), (2,3)]
+    """
+    return list(zip(l, l[1 : len(l)]))
+
+
+def is_asc(l: list) -> bool:
+    """
+    Determines if list is ascending.
+
+    >>> assert is_asc([0, 1, 2])
+    >>> assert is_asc(["a", "b", "c"])
+    >>> assert not is_asc([2, 1, 0])
+    >>> assert not is_asc(["c", "b", "a"])
+    """
+    return l == sorted(l)
+
+
+def is_desc(l: list) -> bool:
+    """
+    Determines if list is descending.
+
+    >>> assert is_desc([2, 1, 0])
+    >>> assert is_desc(["c", "b", "a"])
+    >>> assert not is_desc([0, 1, 2])
+    >>> assert not is_desc(["a", "b", "c"])
+    """
+    return l == sorted(l, reverse=True)

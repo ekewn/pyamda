@@ -2,7 +2,7 @@ from collections import deque
 from itertools import islice, repeat, accumulate, tee, filterfalse
 from typing import Iterable, Iterator, Tuple
 
-from .core import FnU, op, flip, partial, Predicate
+from pyamda.core import FnU, op, flip, partial, Predicate
 
 
 def count_of(x: object) -> FnU[Iterable[object], int]:
