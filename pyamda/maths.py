@@ -86,3 +86,13 @@ def round_to(num_digits: int) -> FnU[float, int | float]:
     >>> assert round_to_2(1.006) == 1.01
     """
     return partial(flip(round), num_digits)  # type: ignore
+
+
+def diff(x: int, y: int) -> int:
+    """
+    Returns the absolute value of the difference between two values.
+
+    >>> assert diff(1, 2) == 1
+    >>> assert diff(2, 1) == 1
+    """
+    return abs(x - y)
