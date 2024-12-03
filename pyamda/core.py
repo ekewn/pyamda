@@ -170,6 +170,18 @@ def always[a](x: a) -> FnN[a]:
     return partial(identity, x)
 
 
+def apply[a, b](fn: FnU[a, b], args: Iterable[a]) -> b:
+    """
+    Applies the function to the unpacked args.
+
+    >>> t = (1, 2)
+    >>> l = [1, 2]
+    >>> assert apply(max, t) == 2
+    >>> assert apply(max, l) == 2
+    """
+    return fn(*args)
+
+
 def flip[a, b, c](fn: FnB[a, b, c]) -> FnB[b, a, c]:
     """
     Returns a binary function with the argument order flipped.
