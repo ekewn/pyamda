@@ -160,15 +160,50 @@ def complement[a](p: Predicate[a]) -> Predicate[a]:
     return partial(_, p)
 
 
-def all_[a](p: Predicate[a]) -> Predicate[Iterable[a]]:
+def all_[a](*predicates: Predicate[a]) -> Predicate[a]:
+    """
+    Combines all given predicates into one which ensures all predicates hold for the argument.
+
+    >>> is_positive = lambda x : x > 0
+    >>> is_even = lambda x : x % 2 == 0
+    >>> assert all_(is_positive, is_even)(2)
+    >>> assert all_(is_positive, is_even)(4)
+    >>> assert not all_(is_positive, is_even)(1)
+    >>> assert not all_(is_positive, is_even)(-2)
+    """
+
+    def _(x) -> bool:
+        return all(p(x) for p in predicates)
+
+    return _
+
+
+def any_[a](*predicates: Predicate[a]) -> Predicate[a]:
+    """
+    Combines all given predicates into one which ensures any predicate holds for the argument.
+
+    >>> is_positive = lambda x : x > 0
+    >>> is_even = lambda x : x % 2 == 0
+    >>> assert any_(is_positive, is_even)(2)
+    >>> assert any_(is_positive, is_even)(1)
+    >>> assert not any_(is_positive, is_even)(-1)
+    """
+
+    def _(x) -> bool:
+        return any(p(x) for p in predicates)
+
+    return _
+
+
+def all_satisfy[a](p: Predicate[a]) -> Predicate[Iterable[a]]:
     """
     Returns a predicate that checks to see if the initial predicate holds for all items in the iterable.
 
     >>> l = [1, 2, 3]
     >>> p1 = lambda x : x > 0
     >>> p2 = lambda x : x > 1
-    >>> assert all_(p1)(l)
-    >>> assert not all_(p2)(l)
+    >>> assert all_satisfy(p1)(l)
+    >>> assert not all_satisfy(p2)(l)
     """
 
     def _(pred, it):
@@ -177,15 +212,15 @@ def all_[a](p: Predicate[a]) -> Predicate[Iterable[a]]:
     return partial(_, p)
 
 
-def any_[a](p: Predicate[a]) -> Predicate[Iterable[a]]:
+def any_satisfy[a](p: Predicate[a]) -> Predicate[Iterable[a]]:
     """
     Returns a predicate that checks to see if the initial predicate holds for any items in the iterable.
 
     >>> l = [1, 2, 3]
     >>> p1 = lambda x : x > 2
     >>> p2 = lambda x : x > 3
-    >>> assert any_(p1)(l)
-    >>> assert not any_(p2)(l)
+    >>> assert any_satisfy(p1)(l)
+    >>> assert not any_satisfy(p2)(l)
     """
 
     def _(pred, it):
