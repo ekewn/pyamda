@@ -25,6 +25,16 @@ def F(*args) -> bool:
     return False
 
 
+def not_(x: bool) -> bool:
+    """
+    Negates the argument.
+
+    >>> assert not not_(True)
+    >>> assert not_(False)
+    """
+    return not x
+
+
 def both[a](p1: Predicate[a], p2: Predicate[a]) -> Predicate[a]:
     """
     Returns a function that returns True if both of the predicates are true.
