@@ -271,7 +271,7 @@ def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
 
 
 def getn(
-    name_or_idxs: List[str | int],
+    *args: str | int,
 ) -> FnU[List | Dict[str | int, Any], Optional[Any]]:
     """
     Nested getter function that descends into lists or dictionaries, returning the value at the last key, or None if any accesses failed.
@@ -279,15 +279,15 @@ def getn(
     Lists are accessed with ints. Dicts are accessed with strs.
 
     >>> x = {"a": {"b": ["c", "d", "e"]}}
-    >>> assert getn(["a", "b"])(x) == ["c", "d", "e"]
-    >>> assert getn(["a", "b", 0])(x) == "c"
-    >>> assert getn(["a", "b", 4])(x) == None
-    >>> assert getn(["z", "b", 0])(x) == None
+    >>> assert getn("a", "b")(x) == ["c", "d", "e"]
+    >>> assert getn("a", "b", 0)(x) == "c"
+    >>> assert getn("a", "b", 4)(x) == None
+    >>> assert getn("z", "b", 0)(x) == None
     """
 
     def descend(lod: List | Dict[str | int, Any]) -> Optional[Any]:
         cur = lod
-        for noi in name_or_idxs:
+        for noi in args:
             try:
                 cur = cur[noi]  # type: ignore - exploiting dict[str] and list[int] can both be accessed in square brackets. Doesn't like the abiguity, but this works since we try catch it.
             except (IndexError, KeyError):
