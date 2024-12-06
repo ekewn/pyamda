@@ -13,24 +13,24 @@ def replace(old: str, new: str) -> FnU[str, str]:
     return method("replace", old, new)
 
 
-def remove(s: str | List[str]) -> FnU[str, str]:
+def remove(*args: str) -> FnU[str, str]:
     """
     Replaces the given string with "" in the string fed to the resulting function.
 
     >>> assert remove("a")("abc") == "bc"
     >>> assert remove("b")("abc") == "ac"
-    >>> assert remove(["a", "b"])("abc") == "c"
-    >>> assert remove(["x", "y"])("xyz") == "z"
+    >>> assert remove("a", "b")("abc") == "c"
+    >>> assert remove("x", "y")("xyz") == "z"
     """
-    if isinstance(s, str):
+    if isinstance(args, str):
 
         def remover(input_str: str) -> str:
-            return input_str.replace(s, "")
+            return input_str.replace(args, "")
 
     else:
 
         def remover(input_str: str) -> str:
-            for substring in s:
+            for substring in args:
                 input_str = input_str.replace(substring, "")
             return input_str
 
