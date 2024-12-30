@@ -39,6 +39,7 @@ class Case[a, b](NamedTuple):
 
 item = op.itemgetter
 method = op.methodcaller
+call = op.call
 p = partial
 
 
@@ -268,6 +269,17 @@ def default_with[a, b](default: b, fn: FnU[a, Optional[b]]) -> FnU[a, b]:
         return d if f(v) is None else f(v)
 
     return partial(_, default, fn)
+
+
+def thunk[a](fn: FnN[a]) -> a:
+    """
+    Returns the value from a nullary function.
+    This is equivalent to operators.call, but with more type-checking guarantees since it only works with nullary functions.
+
+    >>> fn = lambda : "dog"
+    >>> assert thunk(fn) == "dog"
+    """
+    return fn()
 
 
 def getn(
